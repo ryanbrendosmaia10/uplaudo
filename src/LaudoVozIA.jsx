@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { MASCARAS } from "./mascaras";
+import { ALTERACOES } from "./alteracoes";
 
 const IDS_MASCARAS = Object.keys(MASCARAS);
 const MASCARA_ID_PADRAO = IDS_MASCARAS[0];
 
 const chaveStorageMascara = (id) => `laudovoz_mascara_${id}`;
+const chaveAlteracao = (orgao, rotulo) => `${orgao}::${rotulo}`;
 
 const REGRAS_LAUDOVOZ = `Você é o motor de laudos do LaudoVoz, sistema do Dr. Ryan Maia (radiologista). Sua tarefa: receber a transcrição de um ditado de ultrassom e devolver o laudo completo estruturado.
 
@@ -30,7 +32,9 @@ Você recebe uma MÁSCARA (laudo normal padrão do médico) e a TRANSCRIÇÃO do
 5. Preserve a fraseologia e a estrutura da máscara (cabeçalhos por órgão, blocos de MEDIDAS, etc.). Não converta para outro formato.
 6. Composição dentro da frase: cada estrutura segue a sequência fixa de parâmetros da máscara (ex.: dimensões, contornos, bordas, ecotextura; no fígado também marcas vasculares e lesões focais). Quando o ditado alterar um ou dois parâmetros, substitua APENAS esses parâmetros na posição deles dentro da frase, mantendo os demais normais e os conectivos naturais do português (ex.: "Fígado: de dimensões normais, com contornos irregulares, bordas agudas, exibindo ecotextura heterogênea. Marcas vasculares preservadas. Sem lesões focais evidenciadas ao método."). Nunca transcreva o ditado literalmente como frase solta: sempre componha a frase completa da estrutura no padrão da máscara.
 7. O reconhecimento de voz comete erros fonéticos: interprete termos estranhos pelo contexto médico radiológico (ex.: "contextura" = ecotextura). Se a interpretação não for óbvia, aplique a regra 4.
-8. Medidas ditadas vão nos campos de MEDIDAS da máscara, em cm com vírgula decimal.`;
+8. Medidas ditadas vão nos campos de MEDIDAS da máscara, em cm com vírgula decimal.
+
+ALTERAÇÕES SELECIONADAS são frases exatas do médico. Use a 'descricao' de cada alteração VERBATIM, substituindo a frase correspondente da estrutura na máscara (ou inserindo na posição anatômica correta quando for um achado adicional). Use a 'impressao' correspondente como linha da IMPRESSÃO DIAGNÓSTICA. Se o ditado trouxer medidas ou detalhes para uma alteração selecionada (ex.: tamanho do cálculo, lado do cisto), preencha esses dados dentro da frase da alteração. Não parafraseie as frases das alterações.`;
 
 export default function LaudoVozIA() {
   const [transcript, setTranscript] = useState("");
@@ -41,6 +45,7 @@ export default function LaudoVozIA() {
   const [erro, setErro] = useState("");
   const [toast, setToast] = useState("");
   const [abaEntrada, setAbaEntrada] = useState("ditado");
+  const [alteracoesSelecionadas, setAlteracoesSelecionadas] = useState([]);
   const [mascaraId, setMascaraId] = useState(MASCARA_ID_PADRAO);
   const [mascaraTexto, setMascaraTexto] = useState(() => {
     try {
@@ -134,6 +139,7 @@ export default function LaudoVozIA() {
     let salvo = null;
     try { salvo = localStorage.getItem(chaveStorageMascara(id)); } catch (e) {}
     setMascaraTexto(salvo || MASCARAS[id].texto);
+    setAlteracoesSelecionadas([]);
   };
 
   const editarMascaraTexto = (texto) => {
@@ -148,12 +154,38 @@ export default function LaudoVozIA() {
     showToast("Máscara restaurada ao padrão.");
   };
 
+  const toggleAlteracao = (orgao, item) => {
+    const chave = chaveAlteracao(orgao, item.rotulo);
+    setAlteracoesSelecionadas((prev) =>
+      prev.some((a) => chaveAlteracao(a.orgao, a.rotulo) === chave)
+        ? prev.filter((a) => chaveAlteracao(a.orgao, a.rotulo) !== chave)
+        : [...prev, { orgao, ...item }]
+    );
+  };
+
+  const removerAlteracao = (orgao, rotulo) => {
+    const chave = chaveAlteracao(orgao, rotulo);
+    setAlteracoesSelecionadas((prev) => prev.filter((a) => chaveAlteracao(a.orgao, a.rotulo) !== chave));
+  };
+
   const gerarLaudo = async () => {
-    if (!transcript.trim()) { showToast("A transcrição está vazia."); return; }
+    if (!transcript.trim() && alteracoesSelecionadas.length === 0) {
+      showToast("Dite algo ou selecione ao menos uma alteração.");
+      return;
+    }
     setBusy(true);
     setBusyMsg(`Gerando laudo (${MASCARAS[mascaraId].nome})…`);
     setErro("");
     try {
+      const blocoAlteracoes = alteracoesSelecionadas.length
+        ? "\n\nALTERAÇÕES SELECIONADAS:\n" +
+          alteracoesSelecionadas
+            .map((a) => `- ${a.rotulo}\n  descricao: ${a.descricao}\n  impressao: ${a.impressao}`)
+            .join("\n")
+        : "";
+      const blocoTranscricao = transcript.trim()
+        ? "\n\nTRANSCRIÇÃO DO DITADO:\n" + transcript
+        : "";
       const response = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -166,7 +198,8 @@ export default function LaudoVozIA() {
               content:
                 REGRAS_LAUDOVOZ +
                 "\n\nMÁSCARA:\n" + mascaraTexto +
-                "\n\nTRANSCRIÇÃO DO DITADO:\n" + transcript,
+                blocoAlteracoes +
+                blocoTranscricao,
             },
           ],
         }),
@@ -280,7 +313,7 @@ export default function LaudoVozIA() {
                   {listening ? "Gravando… (parar)" : "Ditar"}
                 </button>
                 <button
-                  onClick={() => { setTranscript(""); setInterim(""); }}
+                  onClick={() => { setTranscript(""); setInterim(""); setAlteracoesSelecionadas([]); }}
                   disabled={busy}
                   className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600 text-red-300 disabled:opacity-50"
                 >
@@ -297,6 +330,68 @@ export default function LaudoVozIA() {
                 {listening && interim && (
                   <div className="absolute bottom-0 left-0 right-0 px-3 py-1.5 text-slate-400 text-sm italic bg-slate-800/95 border-t border-slate-700 pointer-events-none">
                     {interim}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-slate-700 flex flex-col max-h-56 overflow-y-auto">
+                <div className="px-3 pt-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Alterações rápidas
+                </div>
+                {(ALTERACOES[mascaraId] || []).length === 0 ? (
+                  <div className="px-3 pb-3 pt-1 text-sm text-slate-500">
+                    Sem alterações cadastradas para este exame.
+                  </div>
+                ) : (
+                  <div className="px-3 pb-2 pt-1 space-y-2">
+                    {ALTERACOES[mascaraId].map((grupo) => (
+                      <div key={grupo.orgao}>
+                        <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {grupo.itens.map((item) => {
+                            const selecionado = alteracoesSelecionadas.some(
+                              (a) => chaveAlteracao(a.orgao, a.rotulo) === chaveAlteracao(grupo.orgao, item.rotulo)
+                            );
+                            return (
+                              <button
+                                key={item.rotulo}
+                                onClick={() => toggleAlteracao(grupo.orgao, item)}
+                                className={
+                                  "px-2.5 py-1 rounded-full text-xs border transition " +
+                                  (selecionado
+                                    ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
+                                    : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
+                                }
+                              >
+                                {item.rotulo}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {alteracoesSelecionadas.length > 0 && (
+                  <div className="px-3 pb-3 pt-2 border-t border-slate-700">
+                    <div className="text-xs font-semibold text-slate-400 mb-1">Selecionadas:</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {alteracoesSelecionadas.map((a) => (
+                        <span
+                          key={chaveAlteracao(a.orgao, a.rotulo)}
+                          className="flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full text-xs bg-sky-950 border border-sky-700 text-sky-200"
+                        >
+                          {a.rotulo}
+                          <button
+                            onClick={() => removerAlteracao(a.orgao, a.rotulo)}
+                            aria-label={`Remover ${a.rotulo}`}
+                            className="w-4 h-4 flex items-center justify-center rounded-full text-sky-300 hover:text-white hover:bg-sky-800 leading-none"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -338,7 +433,7 @@ export default function LaudoVozIA() {
             <h2 className="text-sm font-semibold flex-1">2. Laudo estruturado</h2>
             <button
               onClick={gerarLaudo}
-              disabled={busy || !transcript.trim()}
+              disabled={busy || (!transcript.trim() && alteracoesSelecionadas.length === 0)}
               className="px-4 py-2 rounded-md text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-slate-900 disabled:opacity-50"
             >
               {busy && busyMsg.startsWith("Gerando") ? "Gerando…" : "Gerar laudo"}
