@@ -49,11 +49,21 @@ export default function LaudoVozIA() {
       setInterim(inter);
     };
     rec.onerror = (ev) => {
-      if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+      // "aborted" é disparado quando chamamos rec.stop() manualmente; não é um erro real.
+      if (ev.error === "aborted") return;
+      if (ev.error === "not-allowed" || ev.error === "permission-denied" || ev.error === "service-not-allowed") {
         listeningRef.current = false;
         setListening(false);
-        setErro("Microfone bloqueado. Permita o acesso nas configurações do navegador.");
+        setErro("Permita o microfone no cadeado da barra de endereço e recarregue.");
+        return;
       }
+      if (ev.error === "no-speech") {
+        showToast("Nenhuma fala detectada.");
+        return;
+      }
+      listeningRef.current = false;
+      setListening(false);
+      setErro("Erro no reconhecimento de voz: " + ev.error);
     };
     rec.onend = () => {
       setInterim("");
@@ -73,7 +83,7 @@ export default function LaudoVozIA() {
 
   const toggleMic = () => {
     const rec = recRef.current;
-    if (!rec) { setErro("Este navegador não oferece reconhecimento de voz. Use Chrome ou Edge."); return; }
+    if (!rec) { setErro("Ditado por voz requer Chrome ou Edge."); return; }
     setErro("");
     if (listening) {
       listeningRef.current = false;
@@ -207,13 +217,19 @@ export default function LaudoVozIA() {
               onClick={toggleMic}
               disabled={busy}
               className={
-                "px-4 py-2 rounded-full text-sm font-semibold transition " +
+                "px-4 py-2 rounded-full text-sm font-semibold transition flex items-center gap-2 " +
                 (listening
-                  ? "bg-red-600 text-white animate-pulse"
+                  ? "bg-red-600 text-white"
                   : "bg-slate-700 hover:bg-slate-600 text-slate-100")
               }
             >
-              {listening ? "● Pausar ditado" : "Ditar"}
+              {listening && (
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-100" />
+                </span>
+              )}
+              {listening ? "Gravando… (parar)" : "Ditar"}
             </button>
             <button
               onClick={importarGranola}
@@ -230,15 +246,19 @@ export default function LaudoVozIA() {
               Limpar
             </button>
           </div>
-          {interim && (
-            <div className="px-3 py-1 text-sky-400 text-sm italic border-b border-slate-700">{interim}</div>
-          )}
-          <textarea
-            value={transcript}
-            onChange={(e) => setTranscript(e.target.value)}
-            placeholder="Toque em Ditar e fale os achados, importe do Granola ou cole a transcrição aqui. Você pode editar livremente antes de gerar o laudo."
-            className="flex-1 min-h-48 bg-slate-800 text-slate-100 p-3 text-sm leading-relaxed resize-none outline-none placeholder-slate-500"
-          />
+          <div className="flex-1 relative flex flex-col min-h-48">
+            <textarea
+              value={transcript}
+              onChange={(e) => setTranscript(e.target.value)}
+              placeholder="Toque em Ditar e fale os achados, importe do Granola ou cole a transcrição aqui. Você pode editar livremente antes de gerar o laudo."
+              className="flex-1 bg-slate-800 text-slate-100 p-3 pb-9 text-sm leading-relaxed resize-none outline-none placeholder-slate-500"
+            />
+            {listening && interim && (
+              <div className="absolute bottom-0 left-0 right-0 px-3 py-1.5 text-slate-400 text-sm italic bg-slate-800/95 border-t border-slate-700 pointer-events-none">
+                {interim}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Painel do laudo */}
