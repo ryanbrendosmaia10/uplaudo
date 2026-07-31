@@ -1,10 +1,19 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MASCARAS } from "./mascaras";
 import { ALTERACOES } from "./alteracoes/index.js";
 import { montarLaudo } from "./montarLaudo";
+import TireoideBuilder from "./TireoideBuilder.jsx";
+import MamaBuilder from "./MamaBuilder.jsx";
 
 const IDS_MASCARAS = Object.keys(MASCARAS);
 const MASCARA_ID_PADRAO = IDS_MASCARAS[0];
+
+// Exames cujo painel do modo por cliques é um módulo dedicado (builder de
+// nódulos), não a lista genérica de chips. "mama" ainda não tem máscara em
+// mascaras.js, por isso só existe no modo por cliques.
+const EXAMES_CLIQUES = [...IDS_MASCARAS, "mama"];
+const ehExameBuilder = (id) => id === "tireoide" || id === "mama";
+const nomeExameCliques = (id) => (id === "mama" ? "Mama (nódulos)" : MASCARAS[id].nome);
 
 const chaveStorageMascara = (id) => `laudovoz_mascara_${id}`;
 const chaveAlteracao = (orgao, rotulo) => `${orgao}::${rotulo}`;
@@ -95,6 +104,8 @@ export default function LaudoVozIA() {
   const [cliquesEdicaoManual, setCliquesEdicaoManual] = useState(false);
   const [cliquesFontSize, setCliquesFontSize] = useState(14);
   const cliquesEditorRef = useRef(null);
+  const edicaoManualRef = useRef(false);
+  const builderTextoRef = useRef("");
 
   // ---- Estado do modo "Ditado + IA" ----
   const [transcript, setTranscript] = useState("");
@@ -201,11 +212,25 @@ export default function LaudoVozIA() {
 
   // ---- Modo "Montar por cliques" ----
 
+  const marcarEdicaoManual = (v) => {
+    edicaoManualRef.current = v;
+    setCliquesEdicaoManual(v);
+  };
+
   const atualizarEditorCliques = (exameId, chips) => {
     if (cliquesEditorRef.current) {
       cliquesEditorRef.current.textContent = montarLaudo(lerMascaraAtiva(exameId), chips);
     }
   };
+
+  // Callback estável para os builders (tireoide/mama): guarda o texto mais
+  // recente e só escreve no editor quando não há edição manual ativa.
+  const aoAtualizarBuilder = useCallback((texto) => {
+    builderTextoRef.current = texto;
+    if (!edicaoManualRef.current && cliquesEditorRef.current) {
+      cliquesEditorRef.current.textContent = texto;
+    }
+  }, []);
 
   const toggleChipCliques = (orgao, item) => {
     const chave = chaveAlteracao(orgao, item.rotulo);
@@ -224,14 +249,20 @@ export default function LaudoVozIA() {
     ) return;
     setCliquesExameId(id);
     setCliquesChips([]);
-    setCliquesEdicaoManual(false);
-    atualizarEditorCliques(id, []);
+    marcarEdicaoManual(false);
+    builderTextoRef.current = "";
+    if (!ehExameBuilder(id)) atualizarEditorCliques(id, []);
+    // Exames com builder: o próprio builder emite o laudo ao montar.
   };
 
   const remontarCliques = () => {
     if (!window.confirm("Remontar reaplica máscara + alterações do zero. As edições manuais serão perdidas. Continuar?")) return;
-    setCliquesEdicaoManual(false);
-    atualizarEditorCliques(cliquesExameId, cliquesChips);
+    marcarEdicaoManual(false);
+    if (ehExameBuilder(cliquesExameId)) {
+      if (cliquesEditorRef.current) cliquesEditorRef.current.textContent = builderTextoRef.current;
+    } else {
+      atualizarEditorCliques(cliquesExameId, cliquesChips);
+    }
   };
 
   // ---- Modo "Ditado + IA" ----
@@ -392,50 +423,60 @@ export default function LaudoVozIA() {
               onChange={(e) => trocarExameCliques(e.target.value)}
               className="flex-1 bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-2 outline-none"
             >
-              {IDS_MASCARAS.map((id) => (
-                <option key={id} value={id}>{MASCARAS[id].nome}</option>
+              {EXAMES_CLIQUES.map((id) => (
+                <option key={id} value={id}>{nomeExameCliques(id)}</option>
               ))}
             </select>
           </div>
-          <div className="flex-1 bg-slate-800 rounded-lg border border-slate-700 p-3 overflow-y-auto min-h-48">
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-              Alterações
+          {cliquesExameId === "tireoide" ? (
+            <div className="flex-1 overflow-y-auto min-h-48">
+              <TireoideBuilder mascaraTexto={lerMascaraAtiva("tireoide")} aoAtualizar={aoAtualizarBuilder} />
             </div>
-            {(ALTERACOES[cliquesExameId] || []).length === 0 ? (
-              <div className="text-sm text-slate-500">
-                Sem alterações cadastradas para este exame. Você pode editar o laudo diretamente no editor ao lado.
+          ) : cliquesExameId === "mama" ? (
+            <div className="flex-1 overflow-y-auto min-h-48">
+              <MamaBuilder aoAtualizar={aoAtualizarBuilder} />
+            </div>
+          ) : (
+            <div className="flex-1 bg-slate-800 rounded-lg border border-slate-700 p-3 overflow-y-auto min-h-48">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                Alterações
               </div>
-            ) : (
-              <div className="space-y-3">
-                {ALTERACOES[cliquesExameId].map((grupo) => (
-                  <div key={grupo.orgao}>
-                    <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {grupo.itens.map((item) => {
-                        const selecionado = cliquesChips.some(
-                          (a) => chaveAlteracao(a.orgao, a.rotulo) === chaveAlteracao(grupo.orgao, item.rotulo)
-                        );
-                        return (
-                          <button
-                            key={item.rotulo}
-                            onClick={() => toggleChipCliques(grupo.orgao, item)}
-                            className={
-                              "px-2.5 py-1 rounded-full text-xs border transition " +
-                              (selecionado
-                                ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
-                                : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
-                            }
-                          >
-                            {selecionado ? "✓ " : ""}{item.rotulo}
-                          </button>
-                        );
-                      })}
+              {(ALTERACOES[cliquesExameId] || []).length === 0 ? (
+                <div className="text-sm text-slate-500">
+                  Sem alterações cadastradas para este exame. Você pode editar o laudo diretamente no editor ao lado.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {ALTERACOES[cliquesExameId].map((grupo) => (
+                    <div key={grupo.orgao}>
+                      <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {grupo.itens.map((item) => {
+                          const selecionado = cliquesChips.some(
+                            (a) => chaveAlteracao(a.orgao, a.rotulo) === chaveAlteracao(grupo.orgao, item.rotulo)
+                          );
+                          return (
+                            <button
+                              key={item.rotulo}
+                              onClick={() => toggleChipCliques(grupo.orgao, item)}
+                              className={
+                                "px-2.5 py-1 rounded-full text-xs border transition " +
+                                (selecionado
+                                  ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
+                                  : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
+                              }
+                            >
+                              {selecionado ? "✓ " : ""}{item.rotulo}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Coluna direita: editor do laudo */}
@@ -471,7 +512,7 @@ export default function LaudoVozIA() {
             ref={cliquesEditorRef}
             contentEditable
             suppressContentEditableWarning
-            onInput={() => setCliquesEdicaoManual(true)}
+            onInput={() => marcarEdicaoManual(true)}
             style={{ fontSize: cliquesFontSize + "px" }}
             className="flex-1 min-h-64 bg-white text-slate-900 p-4 leading-relaxed outline-none whitespace-pre-wrap overflow-auto"
           />

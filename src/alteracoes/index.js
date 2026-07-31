@@ -6,8 +6,10 @@
 
 import abdome_total from "./abdome_total.js";
 import vias_urinarias from "./vias_urinarias.js";
+import mama from "./mama.js";
 
 export const ALTERACOES = {
   abdome_total,
   vias_urinarias,
+  mama,
 };
