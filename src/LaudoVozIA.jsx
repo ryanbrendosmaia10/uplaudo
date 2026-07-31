@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { MASCARAS } from "./mascaras";
-import { ALTERACOES } from "./alteracoes";
+import { ALTERACOES } from "./alteracoes/index.js";
 import { montarLaudo } from "./montarLaudo";
 
 const IDS_MASCARAS = Object.keys(MASCARAS);
