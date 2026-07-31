@@ -99,7 +99,7 @@ export default function LaudoVozIA() {
     setBusyMsg("Gerando laudo com IA…");
     setErro("");
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,7 +132,7 @@ export default function LaudoVozIA() {
     setBusyMsg("Buscando última gravação no Granola…");
     setErro("");
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
