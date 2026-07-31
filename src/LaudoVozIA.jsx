@@ -1,4 +1,24 @@
 import { useState, useRef, useEffect } from "react";
+import { MASCARAS } from "./mascaras";
+
+// Ordem importa: exames mais específicos são checados antes dos mais genéricos
+// (ex: doppler de vasos hepáticos antes de abdome total, transvaginal antes de pélvica via abdominal).
+const DETECCAO_MASCARA = [
+  { chave: "abdome_superior_doppler", regex: /doppler/i },
+  { chave: "tireoide", regex: /tire[óo]ide/i },
+  { chave: "prostata", regex: /pr[óo]stata/i },
+  { chave: "pelvica_transvaginal", regex: /transvaginal/i },
+  { chave: "vias_urinarias", regex: /vias urin[áa]rias/i },
+  { chave: "pelvica_abdominal", regex: /p[ée]lv(e|ica|is)|[uú]tero|ov[áa]rio/i },
+  { chave: "abdome_total", regex: /abdome( total)?|f[íi]gado|ves[íi]cula|p[âa]ncreas|ba[çc]o/i },
+];
+
+function detectarMascara(texto) {
+  for (const { chave, regex } of DETECCAO_MASCARA) {
+    if (regex.test(texto)) return MASCARAS[chave];
+  }
+  return null;
+}
 
 const REGRAS_LAUDOVOZ = `Você é o motor de laudos do LaudoVoz, sistema do Dr. Ryan Maia (radiologista). Sua tarefa: receber a transcrição de um ditado de ultrassom e devolver o laudo completo estruturado.
 
@@ -105,10 +125,14 @@ export default function LaudoVozIA() {
 
   const gerarLaudo = async () => {
     if (!transcript.trim()) { showToast("A transcrição está vazia."); return; }
+    const mascara = detectarMascara(transcript);
     setBusy(true);
-    setBusyMsg("Gerando laudo com IA…");
+    setBusyMsg(mascara ? `Gerando laudo (${mascara.nome})…` : "Gerando laudo com IA…");
     setErro("");
     try {
+      const contextoMascara = mascara
+        ? `\n\nMÁSCARA DE REFERÊNCIA (laudo normal padrão para "${mascara.nome}" — use como base e altere apenas o que for dito na transcrição; mantenha estrutura e frases não mencionadas):\n${mascara.texto}`
+        : "";
       const response = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,7 +142,7 @@ export default function LaudoVozIA() {
           messages: [
             {
               role: "user",
-              content: REGRAS_LAUDOVOZ + "\n\nTRANSCRIÇÃO DO DITADO:\n" + transcript,
+              content: REGRAS_LAUDOVOZ + contextoMascara + "\n\nTRANSCRIÇÃO DO DITADO:\n" + transcript,
             },
           ],
         }),
