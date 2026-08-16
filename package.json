@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "formidable": "^3.5.1",
+    "form-data": "^4.0.0",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
