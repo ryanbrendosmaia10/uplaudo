@@ -34,14 +34,10 @@ export default async function handler(req, res) {
     });
     formData.append("model", "whisper-1");
     formData.append("language", "pt");
-    
-    // Temperatura zero para eliminar repetições e invenções
     formData.append("temperature", "0");
-
-    // Dicionário e frases de exemplo para contextualizar a IA
     formData.append(
       "prompt",
-      "Laudo ultrassonográfico radiológico: Fígado de dimensões preservadas, ecotextura homogênea. Cisto simples no segmento IV medindo 10 mm. Nódulo hiperecogênico no segmento VI. Colecistolitíase, vias biliares normais. Rins tópicos, cisto renal no agrupamento calicinal superior, nefrolitíase à direita. BI-RADS, TI-RADS."
+      "Laudo de ultrassonografia radiológica: Fígado de dimensões normais, ecotextura homogênea. Cisto simples no segmento IV medindo 10 mm. Nódulo hiperecogênico no segmento VI medindo 1,5 cm. Colecistolitíase, vias biliares normais. Rins tópicos, cisto renal simples, nefrolitíase à direita. BI-RADS, TI-RADS."
     );
 
     const openAiResponse = await fetch("https://api.openai.com/v1/audio/transcriptions", {
