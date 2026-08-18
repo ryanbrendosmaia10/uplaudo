@@ -1,15 +1,15 @@
-// Biblioteca ADITIVA de alterações clicáveis, um arquivo por exame.
-// Para adicionar um exame novo: crie src/alteracoes/<exame>.js exportando o
-// array de grupos (export default [...]) e acrescente UMA linha de import e
-// UMA entrada no objeto ALTERACOES abaixo. Não é preciso tocar nos exames
-// existentes. A chave de cada exame é o mesmo id usado em src/mascaras.js.
+// src/alteracoes/index.js
 
-import abdome_total from "./abdome_total.js";
-import vias_urinarias from "./vias_urinarias.js";
+import abdomeTotal from "./abdome_total.js";
+import viasUrinarias from "./vias_urinarias.js";
 import mama from "./mama.js";
+import prostata from "./prostata.js";
+import transvaginal from "./transvaginal.js";
 
-export const ALTERACOES = {
-  abdome_total,
-  vias_urinarias,
-  mama,
+export const bibliotecasExames = {
+  "Abdome Total": abdomeTotal,
+  "Vias Urinárias": viasUrinarias,
+  "Mama": mama,
+  "Próstata (Via Abdominal)": prostata,
+  "Transvaginal": transvaginal
 };
