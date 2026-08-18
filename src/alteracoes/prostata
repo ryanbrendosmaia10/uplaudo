@@ -1,4 +1,4 @@
-// src/alteracoes/prostata.js — USG de Próstata Via Abdominal (Bexiga, Próstata, IPP e Resíduo)
+// src/alteracoes/prostata.js — USG de Próstata Via Abdominal (Bexiga, Próstata, IPP e RPM)
 
 import abdomeTotal from "./abdome_total.js";
 
