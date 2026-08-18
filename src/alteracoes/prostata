@@ -1,0 +1,45 @@
+// src/alteracoes/prostata.js — USG de Próstata Via Abdominal (Bexiga, Próstata, IPP e Resíduo)
+
+import abdomeTotal from "./abdome_total.js";
+
+const grupoBexiga = abdomeTotal.find(g => g.orgao === "Bexiga") || {
+  orgao: "Bexiga",
+  itens: []
+};
+
+export default [
+  grupoBexiga,
+  {
+    orgao: "Próstata",
+    itens: [
+      {
+        rotulo: "Próstata normal (dimensões conservadas)",
+        requerInput: true,
+        campos: ["medidaX", "medidaY", "medidaZ", "volume"],
+        descricao: "Próstata: tópica, de contornos precisos e ecotextura parenquimatosa homogênea, com dimensões conservadas, medindo cm e peso estimado em g (VR: até 30g). Ausência de nodulações delimitáveis ao método.",
+        impressao: "Próstata de dimensões conservadas."
+      },
+      {
+        rotulo: "Próstata de dimensões aumentadas (HPB)",
+        requerInput: true,
+        campos: ["medidaX", "medidaY", "medidaZ", "volume"],
+        descricao: "Próstata: tópica, de contornos bem definidos e ecotextura parenquimatosa heterogênea à custa de nódulo(s) de hiperplasia na zona transicional, apresentando dimensões aumentadas, medindo cm e peso estimado em g (VR: até 30g).",
+        impressao: "Aumento das dimensões prostáticas / Sinais de hiperplasia prostática benigna."
+      },
+      {
+        rotulo: "Impressão Prostática Intravesical (IPP)",
+        requerInput: true,
+        campos: ["ippMedida"],
+        descricao: "Observa-se saliência do lobo mediano/terço superior prostático projetando-se no assoalho vesical (IPP), medindo mm.",
+        impressao: "Projeção prostática intravesical (IPP)."
+      },
+      {
+        rotulo: "Resíduo Pós-Miccional (RPM)",
+        requerInput: true,
+        campos: ["volumeRPM"],
+        descricao: "Após a micção, estimou-se um resíduo vesical pós-miccional de ml.",
+        impressao: "Resíduo vesical pós-miccional."
+      }
+    ]
+  }
+];
