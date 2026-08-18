@@ -6,10 +6,21 @@ import mama from "./mama.js";
 import prostata from "./prostata.js";
 import transvaginal from "./transvaginal.js";
 
-export const bibliotecasExames = {
+export const ALTERACOES = {
+  // Mapeamento por chave do ID da máscara
+  "abdome_total": abdomeTotal,
+  "vias_urinarias": viasUrinarias,
+  "mama": mama,
+  "prostata": prostata,
+  "transvaginal": transvaginal,
+
+  // Mapeamento por Nomes por extenso (garante compatibilidade total)
   "Abdome Total": abdomeTotal,
   "Vias Urinárias": viasUrinarias,
   "Mama": mama,
   "Próstata (Via Abdominal)": prostata,
-  "Transvaginal": transvaginal
+  "Transvaginal": transvaginal,
+  "Pélvica transvaginal": transvaginal
 };
+
+export const bibliotecasExames = ALTERACOES;
