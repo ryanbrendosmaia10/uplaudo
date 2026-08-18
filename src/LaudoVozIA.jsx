@@ -8,21 +8,28 @@ import MamaBuilder from "./MamaBuilder.jsx";
 const IDS_MASCARAS = Object.keys(MASCARAS);
 const MASCARA_ID_PADRAO = IDS_MASCARAS[0];
 
-// Exames cujo painel do modo por cliques é um módulo dedicado (builder de
-// nódulos), não a lista genérica de chips. "mama" ainda não tem máscara em
-// mascaras.js, por isso só existe no modo por cliques.
-const EXAMES_CLIQUES = [...IDS_MASCARAS, "mama"];
+// Exames cujas alterações estão disponíveis no modo "Montar por cliques"
+const EXAMES_CLIQUES = Array.from(
+  new Set([...IDS_MASCARAS, "mama", "transvaginal", "prostata"])
+);
+
 const ehExameBuilder = (id) => id === "tireoide" || id === "mama";
-const nomeExameCliques = (id) => (id === "mama" ? "Mama (nódulos)" : MASCARAS[id].nome);
+
+const nomeExameCliques = (id) => {
+  if (id === "mama") return "Mama (nódulos)";
+  if (id === "transvaginal") return "Transvaginal";
+  if (id === "prostata") return "Próstata (Via Abdominal)";
+  return MASCARAS[id]?.nome || id;
+};
 
 const chaveStorageMascara = (id) => `laudovoz_mascara_${id}`;
 const chaveAlteracao = (orgao, rotulo) => `${orgao}::${rotulo}`;
 
 const lerMascaraAtiva = (id) => {
   try {
-    return localStorage.getItem(chaveStorageMascara(id)) || MASCARAS[id].texto;
+    return localStorage.getItem(chaveStorageMascara(id)) || MASCARAS[id]?.texto || "";
   } catch (e) {
-    return MASCARAS[id].texto;
+    return MASCARAS[id]?.texto || "";
   }
 };
 
@@ -32,27 +39,12 @@ REGRAS OBRIGATÓRIAS:
 1. Responda APENAS com o texto do laudo. Sem comentários, sem preâmbulo, sem markdown, sem asteriscos, sem travessão (—). Texto puro em português brasileiro.
 2. Estrutura: TÍTULO DO EXAME EM MAIÚSCULAS na primeira linha, depois linha em branco, depois ANÁLISE: com os parágrafos descritivos, depois IMPRESSÃO: com os achados.
 3. Silêncio = normal: órgãos da modalidade não citados no ditado saem com descrição normal padrão de serviço grande brasileiro.
-4. Medidas em cm com vírgula decimal (ex: 1,2 x 0,8 cm). Vias biliares e veia porta em mm.
+4. Medidas em cm com vírgula decimal (ex: 1,2 x 0,8 cm). Vias biliares, veia porta e espessura endometrial em mm.
 5. Parágrafo renal sempre inclui "Ausência de sinais de hidronefrose ou macrolitíase." após a descrição e antes das medidas.
 6. Cistos renais sem classificação Bosniak (Bosniak é reservada para TC).
-7. Líquido livre: "cavidade abdominal/pélvica".
-8. IMPRESSÃO: sem medidas e sem localizações anatômicas específicas, apenas descritores qualitativos. Cada achado em linha própria. Tudo normal = "Exame ultrassonográfico dentro dos padrões da normalidade."
-9. Vesícula não visualizada por cirurgia prévia: incluir "Status pós-colecistectomia." na impressão.
-10. Nunca invente achados, medidas ou diagnósticos não ditados. Valor incerto ou inaudível na transcrição: marcar [revisar] no local.
-11. A transcrição vem de voz e pode ter erros fonéticos (ex: "eco textura" = ecotextura, "pielo calicial" = pielocalicial): interprete pelo contexto médico.
-12. Ignore conversas paralelas com o paciente ou equipe presentes na transcrição; aproveite apenas o conteúdo de achados do exame.
-
-Você recebe uma MÁSCARA (laudo normal padrão do médico) e a TRANSCRIÇÃO do ditado. Use a MÁSCARA como base exata do laudo. Regras invioláveis:
-1. Altere APENAS os trechos da máscara correspondentes ao que foi efetivamente ditado. Mantenha todo o resto da máscara igual, com a fraseologia normal dela. Nunca invente achados para estruturas que não foram ditadas.
-2. Quando um achado for ditado como alterado, a frase alterada SUBSTITUI a frase normal daquela estrutura — nunca deixe a frase normal e a alterada juntas para a mesma estrutura, nem na descrição nem na impressão.
-3. Na IMPRESSÃO DIAGNÓSTICA nunca inclua medidas nem localização anatômica específica. A impressão é um resumo qualitativo: o diagnóstico, ou palavras da descrição que levem a um diagnóstico, mais recomendações de complementação (TC/RM) e correlação clínico-laboratorial quando cabível.
-4. Se algum trecho do ditado for divergente, ambíguo ou não compreendido, não chute: sinalize entre parênteses com [revisar].
-5. Preserve a fraseologia e a estrutura da máscara (cabeçalhos por órgão, blocos de MEDIDAS, etc.). Não converta para outro formato.
-6. Composição dentro da frase: cada estrutura segue a sequência fixa de parâmetros da máscara (ex.: dimensões, contornos, bordas, ecotextura; no fígado também marcas vasculares e lesões focais). Quando o ditado alterar um ou dois parâmetros, substitua APENAS esses parâmetros na posição deles dentro da frase, mantendo os demais normais e os conectivos naturais do português (ex.: "Fígado: de dimensões normais, com contornos irregulares, bordas agudas, exibindo ecotextura heterogênea. Marcas vasculares preservadas. Sem lesões focais evidenciadas ao método."). Nunca transcreva o ditado literalmente como frase solta: sempre componha a frase completa da estrutura no padrão da máscara.
-7. O reconhecimento de voz comete erros fonéticos: interprete termos estranhos pelo contexto médico radiológico (ex.: "contextura" = ecotextura). Se a interpretação não for óbvia, aplique a regra 4.
-8. Medidas ditadas vão nos campos de MEDIDAS da máscara, em cm com vírgula decimal.
-
-ALTERAÇÕES SELECIONADAS são frases exatas do médico. Use a 'descricao' de cada alteração VERBATIM, substituindo a frase correspondente da estrutura na máscara (ou inserindo na posição anatômica correta quando for um achado adicional). Use a 'impressao' correspondente como linha da IMPRESSÃO DIAGNÓSTICA. Se o ditado trouxer medidas ou detalhes para uma alteração selecionada (ex.: tamanho do cálculo, lado do cisto), preencha esses dados dentro da frase da alteração. Não parafraseie as frases das alterações.`;
+7. Segmentos hepáticos em algarismos romanos (I a VIII). Na IMPRESSÃO, indicar apenas o LOBO CORRESPONDENTE (Lobo Direito / Lobo Esquerdo).
+8. IMPRESSÃO: sem medidas e sem localizações anatômicas específicas/terços/polos, apenas descritores qualitativos. Cada achado em linha própria.
+9. Nunca invente achados, medidas ou diagnósticos não ditados. Valor incerto ou inaudível na transcrição: marcar [revisar] no local.`;
 
 function BarraFormatacao({ aoFormatar, aoAumentar, aoDiminuir }) {
   return (
@@ -98,7 +90,7 @@ export default function LaudoVozIA() {
   const [erro, setErro] = useState("");
   const toastTimer = useRef(null);
 
-  // ---- Estado do modo "Montar por cliques" (100% local) ----
+  // ---- Estado do modo "Montar por cliques" ----
   const [cliquesExameId, setCliquesExameId] = useState(MASCARA_ID_PADRAO);
   const [cliquesChips, setCliquesChips] = useState([]);
   const [cliquesEdicaoManual, setCliquesEdicaoManual] = useState(false);
@@ -142,7 +134,6 @@ export default function LaudoVozIA() {
       setInterim(inter);
     };
     rec.onerror = (ev) => {
-      // "aborted" é disparado quando chamamos rec.stop() manualmente; não é um erro real.
       if (ev.error === "aborted") return;
       if (ev.error === "not-allowed" || ev.error === "permission-denied" || ev.error === "service-not-allowed") {
         listeningRef.current = false;
@@ -168,10 +159,8 @@ export default function LaudoVozIA() {
     return () => { listeningRef.current = false; try { rec.stop(); } catch (e) {} };
   }, []);
 
-  // Carrega a máscara no editor do modo por cliques na abertura do app.
   useEffect(() => {
     atualizarEditorCliques(MASCARA_ID_PADRAO, []);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const showToast = (msg) => {
@@ -205,7 +194,7 @@ export default function LaudoVozIA() {
         await navigator.clipboard.writeText(el.innerText);
         showToast("Laudo copiado (texto simples).");
       } catch (e2) {
-        showToast("Não foi possível copiar automaticamente. Selecione e copie manualmente.");
+        showToast("Não foi possível copiar automaticamente.");
       }
     }
   };
@@ -223,8 +212,6 @@ export default function LaudoVozIA() {
     }
   };
 
-  // Callback estável para os builders (tireoide/mama): guarda o texto mais
-  // recente e só escreve no editor quando não há edição manual ativa.
   const aoAtualizarBuilder = useCallback((texto) => {
     builderTextoRef.current = texto;
     if (!edicaoManualRef.current && cliquesEditorRef.current) {
@@ -235,9 +222,40 @@ export default function LaudoVozIA() {
   const toggleChipCliques = (orgao, item) => {
     const chave = chaveAlteracao(orgao, item.rotulo);
     const jaTem = cliquesChips.some((a) => chaveAlteracao(a.orgao, a.rotulo) === chave);
+
+    let parametros = {};
+    if (!jaTem && item.requerInput && item.campos) {
+      // Coleta rápida dos parâmetros caso o card solicite entradas numéricas/anatômicas
+      if (item.campos.includes("lado")) {
+        parametros.lado = window.prompt("Lado (Direito / Esquerdo / Bilateral):", "Direito") || "Direito";
+      }
+      if (item.campos.includes("segmento")) {
+        parametros.segmento = window.prompt("Segmento Hepático (1 a 8 ou IVa/IVb):", "VI") || "VI";
+      }
+      if (item.campos.includes("terço")) {
+        parametros.terço = window.prompt("Terço / Polo (terço inferior, médio, superior):", "terço inferior") || "terço inferior";
+      }
+      if (item.campos.includes("grau")) {
+        parametros.grau = window.prompt("Grau de Dilatação (Leve, Leve a moderada, Moderada, Acentuada):", "Leve") || "Leve";
+      }
+      if (item.campos.includes("medidaX")) {
+        parametros.medidaX = window.prompt("Medida (cm ou mm):", "1,5") || "";
+      }
+      if (item.campos.includes("medidaY")) {
+        parametros.medidaY = window.prompt("Segunda Medida (opcional em cm):", "") || "";
+      }
+      if (item.campos.includes("volumeRPM")) {
+        parametros.volumeRPM = window.prompt("Volume do Resíduo Pós-Miccional (ml):", "50") || "50";
+      }
+      if (item.campos.includes("ippMedida")) {
+        parametros.ippMedida = window.prompt("Medida da Projeção Intravesical - IPP (mm):", "6") || "6";
+      }
+    }
+
     const novos = jaTem
       ? cliquesChips.filter((a) => chaveAlteracao(a.orgao, a.rotulo) !== chave)
-      : [...cliquesChips, { orgao, ...item }];
+      : [...cliquesChips, { orgao, ...item, parametros }];
+
     setCliquesChips(novos);
     if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, novos);
   };
@@ -252,11 +270,10 @@ export default function LaudoVozIA() {
     marcarEdicaoManual(false);
     builderTextoRef.current = "";
     if (!ehExameBuilder(id)) atualizarEditorCliques(id, []);
-    // Exames com builder: o próprio builder emite o laudo ao montar.
   };
 
   const remontarCliques = () => {
-    if (!window.confirm("Remontar reaplica máscara + alterações do zero. As edições manuais serão perdidas. Continuar?")) return;
+    if (!window.confirm("Remontar reaplica a máscara do zero. As edições manuais serão perdidas. Continuar?")) return;
     marcarEdicaoManual(false);
     if (ehExameBuilder(cliquesExameId)) {
       if (cliquesEditorRef.current) cliquesEditorRef.current.textContent = builderTextoRef.current;
@@ -301,7 +318,7 @@ export default function LaudoVozIA() {
   };
 
   const restaurarMascaraPadrao = () => {
-    const original = MASCARAS[mascaraId].texto;
+    const original = MASCARAS[mascaraId]?.texto || "";
     setMascaraTexto(original);
     try { localStorage.removeItem(chaveStorageMascara(mascaraId)); } catch (e) {}
     showToast("Máscara restaurada ao padrão.");
@@ -327,11 +344,9 @@ export default function LaudoVozIA() {
       return;
     }
     setBusy(true);
-    setBusyMsg(`Gerando laudo (${MASCARAS[mascaraId].nome})…`);
+    setBusyMsg(`Gerando laudo (${nomeExameCliques(mascaraId)})…`);
     setErro("");
     try {
-      // gerarLaudo é recriada a cada render, então alteracoesSelecionadas aqui
-      // é sempre o estado atual do clique (sem closure desatualizada).
       const blocoAlteracoes = alteracoesSelecionadas.length
         ? "\n\nALTERAÇÕES SELECIONADAS:\n" +
           alteracoesSelecionadas
@@ -346,8 +361,7 @@ export default function LaudoVozIA() {
         "\n\nMÁSCARA:\n" + mascaraTexto +
         blocoAlteracoes +
         blocoTranscricao;
-      // Log de depuração do payload (removível)
-      console.log("[LaudoVoz] payload gerarLaudo:", conteudo);
+
       const response = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -373,13 +387,11 @@ export default function LaudoVozIA() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 flex flex-col font-sans">
-      {/* Cabeçalho */}
       <header className="px-4 py-3 border-b border-slate-700 bg-slate-800 flex items-center gap-3 flex-wrap">
         <h1 className="text-base font-semibold tracking-wide">LaudoVoz IA</h1>
         <span className="text-xs text-slate-400">protótipo v0.2 · montar por cliques ou ditado + IA</span>
       </header>
 
-      {/* Abas de modo */}
       <div className="flex border-b border-slate-700 bg-slate-800">
         <button
           onClick={() => setModo("cliques")}
@@ -411,9 +423,8 @@ export default function LaudoVozIA() {
         </div>
       )}
 
-      {/* ===================== MODO MONTAR POR CLIQUES ===================== */}
+      {/* MODO MONTAR POR CLIQUES */}
       <div className={modo === "cliques" ? "flex-1 flex flex-col lg:flex-row gap-4 p-4" : "hidden"}>
-        {/* Coluna esquerda: exame + alterações */}
         <section className="lg:w-2/5 flex flex-col gap-4">
           <div className="bg-slate-800 rounded-lg border border-slate-700 px-3 py-2 flex items-center gap-2">
             <label htmlFor="exame-cliques" className="text-sm font-semibold">Exame</label>
@@ -443,7 +454,7 @@ export default function LaudoVozIA() {
               </div>
               {(ALTERACOES[cliquesExameId] || []).length === 0 ? (
                 <div className="text-sm text-slate-500">
-                  Sem alterações cadastradas para este exame. Você pode editar o laudo diretamente no editor ao lado.
+                  Sem alterações cadastradas para este exame.
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -479,7 +490,6 @@ export default function LaudoVozIA() {
           )}
         </section>
 
-        {/* Coluna direita: editor do laudo */}
         <section className="lg:w-3/5 flex flex-col bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
           <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold flex-1">Laudo</h2>
@@ -519,9 +529,8 @@ export default function LaudoVozIA() {
         </section>
       </div>
 
-      {/* ===================== MODO DITADO + IA ===================== */}
+      {/* MODO DITADO + IA */}
       <div className={modo === "ia" ? "flex-1 flex flex-col lg:flex-row gap-4 p-4" : "hidden"}>
-        {/* Painel de entrada */}
         <section className="flex-1 flex flex-col bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
           <div className="flex border-b border-slate-700">
             <button
@@ -582,7 +591,7 @@ export default function LaudoVozIA() {
                 <textarea
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
-                  placeholder="Toque em Ditar e fale os achados ou cole a transcrição aqui. Você pode editar livremente antes de gerar o laudo."
+                  placeholder="Toque em Ditar e fale os achados ou cole a transcrição aqui."
                   className="flex-1 bg-slate-800 text-slate-100 p-3 pb-9 text-sm leading-relaxed resize-none outline-none placeholder-slate-500"
                 />
                 {listening && interim && (
@@ -630,28 +639,6 @@ export default function LaudoVozIA() {
                     ))}
                   </div>
                 )}
-                {alteracoesSelecionadas.length > 0 && (
-                  <div className="px-3 pb-3 pt-2 border-t border-slate-700">
-                    <div className="text-xs font-semibold text-slate-400 mb-1">Selecionadas:</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {alteracoesSelecionadas.map((a) => (
-                        <span
-                          key={chaveAlteracao(a.orgao, a.rotulo)}
-                          className="flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full text-xs bg-sky-950 border border-sky-700 text-sky-200"
-                        >
-                          {a.rotulo}
-                          <button
-                            onClick={() => removerAlteracao(a.orgao, a.rotulo)}
-                            aria-label={`Remover ${a.rotulo}`}
-                            className="w-4 h-4 flex items-center justify-center rounded-full text-sky-300 hover:text-white hover:bg-sky-800 leading-none"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -666,7 +653,7 @@ export default function LaudoVozIA() {
                   className="bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-2 outline-none"
                 >
                   {IDS_MASCARAS.map((id) => (
-                    <option key={id} value={id}>{MASCARAS[id].nome}</option>
+                    <option key={id} value={id}>{nomeExameCliques(id)}</option>
                   ))}
                 </select>
                 <button
@@ -685,7 +672,6 @@ export default function LaudoVozIA() {
           )}
         </section>
 
-        {/* Painel do laudo */}
         <section className="flex-1 flex flex-col bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
           <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold flex-1">Laudo estruturado</h2>
@@ -716,7 +702,7 @@ export default function LaudoVozIA() {
             ref={laudoEditorRef}
             contentEditable
             suppressContentEditableWarning
-            data-placeholder="O laudo gerado pela IA aparece aqui, em texto puro, no padrão TÍTULO → ANÁLISE: → IMPRESSÃO:. Revise sempre antes de assinar."
+            data-placeholder="O laudo gerado pela IA aparece aqui em texto puro. Revise antes de usar."
             style={{ fontSize: laudoFontSize + "px" }}
             className="flex-1 min-h-48 bg-white text-slate-900 p-4 leading-relaxed outline-none whitespace-pre-wrap overflow-auto empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
           />
@@ -724,7 +710,7 @@ export default function LaudoVozIA() {
       </div>
 
       <footer className="px-4 py-2 text-center text-[11px] text-slate-500 border-t border-slate-700 bg-slate-800">
-        LaudoVoz IA v0.2 · O laudo gerado é um rascunho: revisão e responsabilidade final são do médico. Ditado pelo navegador requer Chrome/Edge com internet.
+        LaudoVoz IA v0.2 · O laudo gerado é um rascunho: revisão e responsabilidade final são do médico.
       </footer>
 
       {toast && (
