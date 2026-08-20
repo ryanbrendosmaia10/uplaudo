@@ -4,6 +4,12 @@ import { ALTERACOES } from "./alteracoes/index.js";
 import { montarLaudo } from "./montarLaudo";
 import TireoideBuilder from "./TireoideBuilder.jsx";
 import MamaBuilder from "./MamaBuilder.jsx";
+import {
+  itemElegivelParaMedida,
+  numeroDeCamposMedida,
+  aplicarMedida,
+  unidadeDoLocus,
+} from "./camposMedida.js";
 
 const IDS_MASCARAS = Object.keys(MASCARAS);
 const MASCARA_ID_PADRAO = IDS_MASCARAS[0];
@@ -54,6 +60,30 @@ Você recebe uma MÁSCARA (laudo normal padrão do médico) e a TRANSCRIÇÃO do
 
 ALTERAÇÕES SELECIONADAS são frases exatas do médico. Use a 'descricao' de cada alteração VERBATIM, substituindo a frase correspondente da estrutura na máscara (ou inserindo na posição anatômica correta quando for um achado adicional). Use a 'impressao' correspondente como linha da IMPRESSÃO DIAGNÓSTICA. Se o ditado trouxer medidas ou detalhes para uma alteração selecionada (ex.: tamanho do cálculo, lado do cisto), preencha esses dados dentro da frase da alteração. Não parafraseie as frases das alterações.`;
 
+// Bloco 1: 0-3 campos de medida acoplados a um chip de alteração ativo.
+// Só aparecem enquanto a alteração está selecionada; o valor some ao
+// desativar. Aceita vírgula ou ponto, nunca converte unidade.
+function CamposMedidaChip({ item, valores, aoMudar }) {
+  const n = numeroDeCamposMedida(item);
+  const unidade = unidadeDoLocus(item.descricao);
+  return (
+    <div className="flex items-center gap-1 mt-1 ml-1" onClick={(e) => e.stopPropagation()}>
+      {Array.from({ length: n }).map((_, i) => (
+        <input
+          key={i}
+          type="text"
+          inputMode="decimal"
+          value={valores[i] || ""}
+          onChange={(e) => aoMudar(i, e.target.value)}
+          placeholder={unidade}
+          aria-label={`Medida ${i + 1} (${unidade}) de ${item.rotulo}`}
+          className="w-14 bg-slate-900 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-100 outline-none focus:border-sky-400"
+        />
+      ))}
+    </div>
+  );
+}
+
 function BarraFormatacao({ aoFormatar, aoAumentar, aoDiminuir }) {
   return (
     <div className="px-3 py-1.5 border-b border-slate-700 flex items-center gap-1 bg-slate-800/60">
@@ -101,6 +131,7 @@ export default function LaudoVozIA() {
   // ---- Estado do modo "Montar por cliques" (100% local) ----
   const [cliquesExameId, setCliquesExameId] = useState(MASCARA_ID_PADRAO);
   const [cliquesChips, setCliquesChips] = useState([]);
+  const [medidasPorChip, setMedidasPorChip] = useState({}); // chave -> [v1,v2,v3]
   const [cliquesEdicaoManual, setCliquesEdicaoManual] = useState(false);
   const [cliquesFontSize, setCliquesFontSize] = useState(14);
   const cliquesEditorRef = useRef(null);
@@ -115,6 +146,7 @@ export default function LaudoVozIA() {
   const [busyMsg, setBusyMsg] = useState("");
   const [abaEntrada, setAbaEntrada] = useState("ditado");
   const [alteracoesSelecionadas, setAlteracoesSelecionadas] = useState([]);
+  const [medidasPorAlteracao, setMedidasPorAlteracao] = useState({}); // chave -> [v1,v2,v3]
   const [mascaraId, setMascaraId] = useState(MASCARA_ID_PADRAO);
   const [mascaraTexto, setMascaraTexto] = useState(() => lerMascaraAtiva(MASCARA_ID_PADRAO));
   const [laudoFontSize, setLaudoFontSize] = useState(14);
@@ -223,9 +255,17 @@ export default function LaudoVozIA() {
     setCliquesEdicaoManual(v);
   };
 
-  const atualizarEditorCliques = (exameId, chips) => {
+  // chips com a descrição final (medidas do Bloco 1 já substituídas/removidas).
+  const chipsComMedidas = (chips, mapaMedidas) =>
+    chips.map((chip) => {
+      if (!itemElegivelParaMedida(chip)) return chip;
+      const chave = chaveAlteracao(chip.orgao, chip.rotulo);
+      return { ...chip, descricao: aplicarMedida(chip.descricao, mapaMedidas[chave] || []) };
+    });
+
+  const atualizarEditorCliques = (exameId, chips, mapaMedidas = medidasPorChip) => {
     if (cliquesEditorRef.current) {
-      cliquesEditorRef.current.textContent = montarLaudo(lerMascaraAtiva(exameId), chips);
+      cliquesEditorRef.current.textContent = montarLaudo(lerMascaraAtiva(exameId), chipsComMedidas(chips, mapaMedidas));
     }
   };
 
@@ -245,7 +285,23 @@ export default function LaudoVozIA() {
       ? cliquesChips.filter((a) => chaveAlteracao(a.orgao, a.rotulo) !== chave)
       : [...cliquesChips, { orgao, ...item }];
     setCliquesChips(novos);
-    if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, novos);
+    // Desativar a alteração descarta as medidas digitadas para ela.
+    let mapaMedidas = medidasPorChip;
+    if (jaTem && medidasPorChip[chave]) {
+      mapaMedidas = { ...medidasPorChip };
+      delete mapaMedidas[chave];
+      setMedidasPorChip(mapaMedidas);
+    }
+    if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, novos, mapaMedidas);
+  };
+
+  const alterarMedidaChip = (orgao, rotulo, indice, valor) => {
+    const chave = chaveAlteracao(orgao, rotulo);
+    const atual = medidasPorChip[chave] ? [...medidasPorChip[chave]] : [];
+    atual[indice] = valor;
+    const mapaMedidas = { ...medidasPorChip, [chave]: atual };
+    setMedidasPorChip(mapaMedidas);
+    if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, cliquesChips, mapaMedidas);
   };
 
   const trocarExameCliques = (id) => {
@@ -255,6 +311,7 @@ export default function LaudoVozIA() {
     ) return;
     setCliquesExameId(id);
     setCliquesChips([]);
+    setMedidasPorChip({});
     marcarEdicaoManual(false);
     builderTextoRef.current = "";
     if (!ehExameBuilder(id)) atualizarEditorCliques(id, []);
@@ -363,16 +420,41 @@ export default function LaudoVozIA() {
 
   const toggleAlteracao = (orgao, item) => {
     const chave = chaveAlteracao(orgao, item.rotulo);
+    const jaTem = alteracoesSelecionadas.some((a) => chaveAlteracao(a.orgao, a.rotulo) === chave);
     setAlteracoesSelecionadas((prev) =>
-      prev.some((a) => chaveAlteracao(a.orgao, a.rotulo) === chave)
+      jaTem
         ? prev.filter((a) => chaveAlteracao(a.orgao, a.rotulo) !== chave)
         : [...prev, { orgao, ...item }]
     );
+    // Desativar a alteração descarta as medidas digitadas para ela.
+    if (jaTem && medidasPorAlteracao[chave]) {
+      setMedidasPorAlteracao((prev) => {
+        const novo = { ...prev };
+        delete novo[chave];
+        return novo;
+      });
+    }
+  };
+
+  const alterarMedidaAlteracao = (orgao, rotulo, indice, valor) => {
+    const chave = chaveAlteracao(orgao, rotulo);
+    setMedidasPorAlteracao((prev) => {
+      const atual = prev[chave] ? [...prev[chave]] : [];
+      atual[indice] = valor;
+      return { ...prev, [chave]: atual };
+    });
   };
 
   const removerAlteracao = (orgao, rotulo) => {
     const chave = chaveAlteracao(orgao, rotulo);
     setAlteracoesSelecionadas((prev) => prev.filter((a) => chaveAlteracao(a.orgao, a.rotulo) !== chave));
+    if (medidasPorAlteracao[chave]) {
+      setMedidasPorAlteracao((prev) => {
+        const novo = { ...prev };
+        delete novo[chave];
+        return novo;
+      });
+    }
   };
 
   const gerarLaudo = async () => {
@@ -389,7 +471,13 @@ export default function LaudoVozIA() {
       const blocoAlteracoes = alteracoesSelecionadas.length
         ? "\n\nALTERAÇÕES SELECIONADAS:\n" +
           alteracoesSelecionadas
-            .map((a, i) => `${i + 1}. ${a.rotulo}\n   Descrição: ${a.descricao}\n   Impressão: ${a.impressao}`)
+            .map((a, i) => {
+              const chave = chaveAlteracao(a.orgao, a.rotulo);
+              const descricao = itemElegivelParaMedida(a)
+                ? aplicarMedida(a.descricao, medidasPorAlteracao[chave] || [])
+                : a.descricao;
+              return `${i + 1}. ${a.rotulo}\n   Descrição: ${descricao}\n   Impressão: ${a.impressao}`;
+            })
             .join("\n")
         : "";
       const blocoTranscricao = transcript.trim()
@@ -520,22 +608,31 @@ export default function LaudoVozIA() {
                       <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
                       <div className="flex flex-wrap gap-1.5">
                         {grupo.itens.map((item) => {
+                          const chave = chaveAlteracao(grupo.orgao, item.rotulo);
                           const selecionado = cliquesChips.some(
-                            (a) => chaveAlteracao(a.orgao, a.rotulo) === chaveAlteracao(grupo.orgao, item.rotulo)
+                            (a) => chaveAlteracao(a.orgao, a.rotulo) === chave
                           );
                           return (
-                            <button
-                              key={item.rotulo}
-                              onClick={() => toggleChipCliques(grupo.orgao, item)}
-                              className={
-                                "px-2.5 py-1 rounded-full text-xs border transition " +
-                                (selecionado
-                                  ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
-                                  : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
-                              }
-                            >
-                              {selecionado ? "✓ " : ""}{item.rotulo}
-                            </button>
+                            <div key={item.rotulo} className="flex flex-col items-start">
+                              <button
+                                onClick={() => toggleChipCliques(grupo.orgao, item)}
+                                className={
+                                  "px-2.5 py-1 rounded-full text-xs border transition " +
+                                  (selecionado
+                                    ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
+                                    : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
+                                }
+                              >
+                                {selecionado ? "✓ " : ""}{item.rotulo}
+                              </button>
+                              {selecionado && itemElegivelParaMedida(item) && (
+                                <CamposMedidaChip
+                                  item={item}
+                                  valores={medidasPorChip[chave] || []}
+                                  aoMudar={(i, v) => alterarMedidaChip(grupo.orgao, item.rotulo, i, v)}
+                                />
+                              )}
+                            </div>
                           );
                         })}
                       </div>
@@ -699,22 +796,31 @@ export default function LaudoVozIA() {
                         <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
                         <div className="flex flex-wrap gap-1.5">
                           {grupo.itens.map((item) => {
+                            const chave = chaveAlteracao(grupo.orgao, item.rotulo);
                             const selecionado = alteracoesSelecionadas.some(
-                              (a) => chaveAlteracao(a.orgao, a.rotulo) === chaveAlteracao(grupo.orgao, item.rotulo)
+                              (a) => chaveAlteracao(a.orgao, a.rotulo) === chave
                             );
                             return (
-                              <button
-                                key={item.rotulo}
-                                onClick={() => toggleAlteracao(grupo.orgao, item)}
-                                className={
-                                  "px-2.5 py-1 rounded-full text-xs border transition " +
-                                  (selecionado
-                                    ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
-                                    : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
-                                }
-                              >
-                                {item.rotulo}
-                              </button>
+                              <div key={item.rotulo} className="flex flex-col items-start">
+                                <button
+                                  onClick={() => toggleAlteracao(grupo.orgao, item)}
+                                  className={
+                                    "px-2.5 py-1 rounded-full text-xs border transition " +
+                                    (selecionado
+                                      ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
+                                      : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
+                                  }
+                                >
+                                  {item.rotulo}
+                                </button>
+                                {selecionado && itemElegivelParaMedida(item) && (
+                                  <CamposMedidaChip
+                                    item={item}
+                                    valores={medidasPorAlteracao[chave] || []}
+                                    aoMudar={(i, v) => alterarMedidaAlteracao(grupo.orgao, item.rotulo, i, v)}
+                                  />
+                                )}
+                              </div>
                             );
                           })}
                         </div>
