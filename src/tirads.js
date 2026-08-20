@@ -3,6 +3,8 @@
 // TI-RADS, Tessler et al. 2017). Não alterar pontos, limiares ou textos
 // sem revisão do médico. A interface fica em src/TireoideBuilder.jsx.
 
+import { aplicarMedida } from "./camposMedida.js";
+
 export const COMPOSITION = [
   { id: "cistico", label: "Cístico ou quase completamente cístico", pts: 0, text: "cístico" },
   { id: "espongiforme", label: "Espongiforme", pts: 0, text: "espongiforme" },
@@ -145,6 +147,68 @@ export function describeNodule(n) {
   return desc;
 }
 
+// ---- Bloco 2: "Nódulo padrão" ----
+// Botão de atalho para o caso banal: gera de um clique uma frase completa e
+// gramaticalmente correta, com todas as características assumidas normais,
+// deixando para o médico só o que varia por paciente (composição,
+// ecogenicidade, localização opcional, medidas). Convive com o caminho
+// detalhado acima (que fica intocado) — não calcula TI-RADS aqui.
+
+export const COMPOSICAO_PADRAO = [
+  { id: "solido", label: "Sólido", text: "sólido" },
+  { id: "misto", label: "Misto", text: "misto" },
+  { id: "misto_predom_solido", label: "Misto, predominantemente sólido", text: "misto, predominantemente sólido" },
+];
+
+export const ECOGENICIDADE_PADRAO = [
+  { id: "isoecoico", label: "Isoecoico", text: "isoecoico" },
+  { id: "hipoecoico", label: "Hipoecoico", text: "hipoecoico" },
+  { id: "hiperecoico", label: "Hiperecoico", text: "hiperecoico" },
+];
+
+export const TERCOS_PADRAO = [
+  { id: "", label: "selecionar" },
+  { id: "superior", label: "Superior" },
+  { id: "medio", label: "Médio", text: "médio" },
+  { id: "inferior", label: "Inferior" },
+];
+
+export const LOBOS_PADRAO = [
+  { id: "", label: "selecionar" },
+  { id: "direito", label: "Direito" },
+  { id: "esquerdo", label: "Esquerdo" },
+  { id: "istmo", label: "Istmo" },
+];
+
+export const NODULO_PADRAO_VAZIO = {
+  composicao: "solido",
+  ecogenicidade: "isoecoico",
+  terco: "",
+  lobo: "",
+  m1: "", m2: "", m3: "",
+};
+
+export function describeNoduloPadrao(n) {
+  const comp = findOpt(COMPOSICAO_PADRAO, n.composicao) || COMPOSICAO_PADRAO[0];
+  const echo = findOpt(ECOGENICIDADE_PADRAO, n.ecogenicidade) || ECOGENICIDADE_PADRAO[0];
+
+  let frase =
+    `Nódulo ${comp.text}, ${echo.text}, de contornos regulares e margens bem definidas, ` +
+    `com maior eixo paralelo à pele, sem calcificações no seu interior`;
+
+  if (n.lobo === "istmo") {
+    frase += ", situado no istmo";
+  } else if (n.lobo && n.terco) {
+    const tercoOpt = findOpt(TERCOS_PADRAO, n.terco);
+    const tercoTxt = (tercoOpt && tercoOpt.text) || tercoOpt?.label?.toLowerCase() || n.terco;
+    const loboTxt = n.lobo === "direito" ? "direito" : "esquerdo";
+    frase += `, situado no terço ${tercoTxt} do lobo ${loboTxt}`;
+  }
+
+  frase += ", medindo cm.";
+  return aplicarMedida(frase, [n.m1, n.m2, n.m3]);
+}
+
 export const GLAND_PADRAO = {
   location: "topica",
   rd1: "", rd2: "", rd3: "",
@@ -182,8 +246,9 @@ const glandFoiAlterada = (gland) =>
 // glândula, lista os nódulos, preenche MEDIDAS TIREOIDEANAS e o volume, e
 // troca a linha de normalidade da impressão. Impressão sem medidas e sem
 // localização (regra inviolável do projeto).
-export function montarLaudoTireoide(mascaraTexto, gland, nodules) {
-  const temNodulos = nodules.length > 0;
+export function montarLaudoTireoide(mascaraTexto, gland, nodules, nodulosPadrao = []) {
+  const totalNodulos = nodules.length + nodulosPadrao.length;
+  const temNodulos = totalNodulos > 0;
   const rd = lobeVolume(gland.rd1, gland.rd2, gland.rd3);
   const le = lobeVolume(gland.le1, gland.le2, gland.le3);
   const total = rd === null && le === null ? null : (rd || 0) + (le || 0);
@@ -195,8 +260,14 @@ export function montarLaudoTireoide(mascaraTexto, gland, nodules) {
       if (temNodulos) {
         frase = frase.replace(/\.$/, ":");
         linhas.push(frase);
-        nodules.forEach((n, i) => {
-          linhas.push(`- N${i + 1}: ${describeNodule(n).replace(/^Nódulo /, "")}`);
+        let i = 0;
+        nodules.forEach((n) => {
+          i += 1;
+          linhas.push(`- N${i}: ${describeNodule(n).replace(/^Nódulo /, "")}`);
+        });
+        nodulosPadrao.forEach((n) => {
+          i += 1;
+          linhas.push(`- N${i}: ${describeNoduloPadrao(n).replace(/^Nódulo /, "")}`);
         });
       } else {
         // Sem nódulos, o sufixo da calculadora (que referencia nódulos) não se aplica.
@@ -222,7 +293,7 @@ export function montarLaudoTireoide(mascaraTexto, gland, nodules) {
       continue;
     }
     if (temNodulos && linha.trim().startsWith("- ") && linha.includes("dentro dos padrões da normalidade")) {
-      const plural = nodules.length > 1;
+      const plural = totalNodulos > 1;
       linhas.push(`- Nódulo${plural ? "s" : ""} tireoideano${plural ? "s" : ""}, conforme pormenorizado no corpo do laudo.`);
       continue;
     }
