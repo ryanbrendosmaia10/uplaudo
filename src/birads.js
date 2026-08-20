@@ -146,16 +146,33 @@ export function describeCistos(c) {
   return clausulas.join(", ") + ".";
 }
 
-export const TISSUE_PADRAO = { pattern: "homog_fibro", gtc: "moderado" };
+// ---- Bloco 6: Composição Tecidual ----
+// Seção obrigatória e dedicada (BI-RADS v2025), com o GTC (glandular tissue
+// component) como qualificador em quartis do tecido fibroglandular. Sem
+// valor pré-selecionado em nenhum dos dois campos — o médico escolhe os
+// dois. Nunca entra percentual no texto do laudo, nunca deriva o GTC de
+// outro campo, nunca relaciona GTC a risco (nem na interface nem no laudo).
+export const TISSUE_VAZIO = { pattern: "", gtc: "" };
+
+// [DECIDIR — a restrição de GTC é certa para o padrão "a" (gordura); quanto
+// ao padrão "c" (heterogênea) não há confirmação do médico, então GTC fica
+// habilitado em "c" como recebido — não decidi isso sozinho.]
+export const gtcDesabilitadoPara = (pattern) => pattern === "homog_gordura";
 
 export function describeTissue(tissue) {
+  if (!tissue.pattern) return "";
   const patternTxt = {
-    homog_gordura: "homogênea, de padrão adiposo",
-    homog_fibro: "homogênea, de padrão fibroglandular",
-    heterogenea: "heterogênea",
+    homog_gordura: "ecotextura de fundo homogênea, predominantemente adiposa",
+    homog_fibro: "ecotextura de fundo homogênea, predominantemente fibroglandular",
+    heterogenea: "ecotextura de fundo heterogênea",
   }[tissue.pattern];
-  const gtcTxt = { minimo: "mínimo", leve: "leve", moderado: "moderado", marcado: "marcado" }[tissue.gtc];
-  return `Mamas com ecotextura de fundo ${patternTxt}, com componente glandular ${gtcTxt}.`;
+
+  let frase = `COMPOSIÇÃO TECIDUAL: ${patternTxt}`;
+  if (!gtcDesabilitadoPara(tissue.pattern) && tissue.gtc) {
+    const gtcTxt = { minimo: "mínimo", leve: "leve", moderado: "moderado", marcado: "marcado" }[tissue.gtc];
+    frase += `, com componente de tecido glandular ${gtcTxt}`;
+  }
+  return frase + ".";
 }
 
 export function scoreFor(n) {
@@ -261,9 +278,10 @@ export const NODULO_VAZIO = {
 // médico (parâmetro `categoria`) — nunca somada, calculada ou tirada do
 // pior achado — e aparece só na linha de classificação, nunca na frase do
 // nódulo nem na impressão.
-export function montarLaudoMama(tissueEnabled, tissue, cistos, nodules, nodulosPadrao, categoria) {
+export function montarLaudoMama(tissue, cistos, nodules, nodulosPadrao, categoria) {
   const partes = [];
-  if (tissueEnabled) partes.push(describeTissue(tissue));
+  const textoTecido = describeTissue(tissue || TISSUE_VAZIO);
+  if (textoTecido) partes.push(textoTecido);
 
   const textoCistos = describeCistos(cistos || CISTOS_VAZIO);
   if (textoCistos) partes.push(textoCistos);

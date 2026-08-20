@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   SHAPE, ORIENTATION, MARGIN, ECHO, POSTERIOR, CALC, LATERALITY,
-  TISSUE_PADRAO, NODULO_VAZIO, scoreFor, montarLaudoMama,
+  TISSUE_VAZIO, gtcDesabilitadoPara, NODULO_VAZIO, scoreFor, montarLaudoMama,
   CATEGORIAS_BIRADS, NODULO_PADRAO_MAMA_VAZIO, CISTOS_VAZIO,
   noduloCompativelComBirads3, AVISO_BIRADS3_LINHA1, AVISO_BIRADS3_LINHA2,
 } from "./birads.js";
@@ -48,16 +48,15 @@ function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio, desabilitado, d
 }
 
 export default function MamaBuilder({ aoAtualizar }) {
-  const [tissueEnabled, setTissueEnabled] = useState(false);
-  const [tissue, setTissue] = useState(TISSUE_PADRAO);
+  const [tissue, setTissue] = useState(TISSUE_VAZIO);
   const [cistos, setCistos] = useState(CISTOS_VAZIO);
   const [nodules, setNodules] = useState([]);
   const [nodulosPadrao, setNodulosPadrao] = useState([]);
   const [categoria, setCategoria] = useState("");
 
   useEffect(() => {
-    aoAtualizar(montarLaudoMama(tissueEnabled, tissue, cistos, nodules, nodulosPadrao, categoria));
-  }, [tissueEnabled, tissue, cistos, nodules, nodulosPadrao, categoria, aoAtualizar]);
+    aoAtualizar(montarLaudoMama(tissue, cistos, nodules, nodulosPadrao, categoria));
+  }, [tissue, cistos, nodules, nodulosPadrao, categoria, aoAtualizar]);
 
   const setNodField = (i, key, val) =>
     setNodules((prev) => prev.map((n, j) => (j === i ? { ...n, [key]: val } : n)));
@@ -113,29 +112,47 @@ export default function MamaBuilder({ aoAtualizar }) {
         e a classificação; o laudo completo depende da máscara a ser fornecida pelo médico.
       </div>
 
-      {/* Tecido de fundo e cistos */}
+      {/* Bloco 6: Composição Tecidual — seção obrigatória e dedicada
+          (BI-RADS v2025). Nenhum dos dois campos vem pré-selecionado; o
+          médico escolhe os dois. GTC (glandular tissue component, quartil
+          do tecido fibroglandular) só se aplica quando o padrão não é
+          adiposo. Percentuais aqui são só ajuda de interface — nunca vão
+          para o texto do laudo, e o GTC nunca é usado para relacionar risco. */}
       <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={tissueEnabled} onChange={(e) => setTissueEnabled(e.target.checked)} className="w-4 h-4 accent-sky-500" />
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Composição tecidual (opcional)</span>
-        </label>
-        {tissueEnabled && (
-          <div className="grid grid-cols-2 gap-2">
-            <SelectGrupo semVazio titulo="Ecotextura de fundo" valor={tissue.pattern} aoMudar={(v) => setTissue((t) => ({ ...t, pattern: v || "homog_fibro" }))}
-              opcoes={[
-                { id: "homog_gordura", label: "Homogênea, gordura" },
-                { id: "homog_fibro", label: "Homogênea, fibroglandular" },
-                { id: "heterogenea", label: "Heterogênea" },
-              ]} />
-            <SelectGrupo semVazio titulo="Componente glandular (GTC)" valor={tissue.gtc} aoMudar={(v) => setTissue((t) => ({ ...t, gtc: v || "moderado" }))}
-              opcoes={[
-                { id: "minimo", label: "Mínimo (<25%)" },
-                { id: "leve", label: "Leve (25-49%)" },
-                { id: "moderado", label: "Moderado (50-74%)" },
-                { id: "marcado", label: "Marcado (≥75%)" },
-              ]} />
-          </div>
-        )}
+        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Composição tecidual</div>
+        <div className="grid grid-cols-2 gap-2">
+          <SelectGrupo
+            titulo="Padrão tecidual / ecotextura de fundo"
+            valor={tissue.pattern}
+            aoMudar={(v) =>
+              setTissue((t) => (gtcDesabilitadoPara(v) ? { pattern: v || "", gtc: "" } : { ...t, pattern: v || "" }))
+            }
+            opcoes={[
+              { id: "homog_gordura", label: "Ecotextura de fundo homogênea - gordura" },
+              { id: "homog_fibro", label: "Ecotextura de fundo homogênea - fibroglandular" },
+              { id: "heterogenea", label: "Ecotextura de fundo heterogênea" },
+            ]}
+          />
+          <SelectGrupo
+            titulo="Componente glandular (GTC)"
+            valor={tissue.gtc}
+            aoMudar={(v) => setTissue((t) => ({ ...t, gtc: v || "" }))}
+            desabilitado={gtcDesabilitadoPara(tissue.pattern)}
+            dica={
+              gtcDesabilitadoPara(tissue.pattern)
+                ? "GTC não se aplica a mama predominantemente adiposa"
+                : tissue.pattern && !tissue.gtc
+                ? "Pendente: escolha o GTC para completar a seção (não bloqueia o laudo)."
+                : null
+            }
+            opcoes={[
+              { id: "minimo", label: "Mínimo (<25%)" },
+              { id: "leve", label: "Leve (25-49%)" },
+              { id: "moderado", label: "Moderado (50-74%)" },
+              { id: "marcado", label: "Marcado (≥75%)" },
+            ]}
+          />
+        </div>
       </div>
 
       {/* Bloco 3b: Cistos mamários — item separado do nódulo, duas opções
