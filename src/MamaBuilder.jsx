@@ -3,6 +3,7 @@ import {
   SHAPE, ORIENTATION, MARGIN, ECHO, POSTERIOR, CALC, LATERALITY,
   TISSUE_PADRAO, NODULO_VAZIO, scoreFor, montarLaudoMama,
   CATEGORIAS_BIRADS, NODULO_PADRAO_MAMA_VAZIO, CISTOS_VAZIO,
+  noduloCompativelComBirads3, AVISO_BIRADS3_LINHA1, AVISO_BIRADS3_LINHA2,
 } from "./birads.js";
 
 // MamaBuilder — interface do módulo BI-RADS no modo "Montar por cliques".
@@ -91,6 +92,11 @@ export default function MamaBuilder({ aoAtualizar }) {
   const removerNoduloPadrao = (i) => setNodulosPadrao((prev) => prev.filter((_, j) => j !== i));
   const setNodPadraoField = (i, key, val) =>
     setNodulosPadrao((prev) => prev.map((n, j) => (j === i ? { ...n, [key]: val } : n)));
+
+  // Bloco 5: aviso de coerência do BI-RADS 3 — nunca bloqueia, só realça o
+  // campo de classificação quando algum nódulo detalhado não atende aos 4
+  // critérios do "provavelmente benigno" com a categoria atual em 3.
+  const algumNoduloIncompativelCom3 = categoria === "3" && nodules.some((n) => !noduloCompativelComBirads3(n));
 
   const setCistoField = (key, val) => setCistos((prev) => ({ ...prev, [key]: val }));
   const alternarModoCisto = (modo) =>
@@ -220,7 +226,13 @@ export default function MamaBuilder({ aoAtualizar }) {
       </div>
 
       {/* Bloco 3: categoria BI-RADS final — sempre manual, nunca calculada. */}
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3">
+      <div
+        className={
+          "bg-slate-800 rounded-lg border p-3 " +
+          (algumNoduloIncompativelCom3 ? "border-red-500" : "border-slate-700")
+        }
+        data-testid="classificacao-final"
+      >
         <SelectGrupo
           titulo="Classificação final (ACR BI-RADS)"
           opcoes={CATEGORIAS_BIRADS.map((c) => ({ id: c, label: c }))}
@@ -297,6 +309,12 @@ export default function MamaBuilder({ aoAtualizar }) {
               {s.flags} característica{s.flags === 1 ? "" : "s"} suspeita{s.flags === 1 ? "" : "s"} (informativo — a
               categoria final é sempre escolhida pelo médico no campo "Classificação final" abaixo).
             </div>
+            {categoria === "3" && !noduloCompativelComBirads3(n) && (
+              <div className="text-xs text-red-300 bg-red-950/40 border border-red-700 rounded-md p-2 leading-relaxed" data-testid={`aviso-birads3-${i + 1}`}>
+                <div>{AVISO_BIRADS3_LINHA1}</div>
+                <div>{AVISO_BIRADS3_LINHA2}</div>
+              </div>
+            )}
           </div>
         );
       })}

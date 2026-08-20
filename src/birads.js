@@ -217,6 +217,28 @@ export function describeNodule(n, comCategoria = true) {
   return desc;
 }
 
+// ---- Bloco 5: validação de coerência do BI-RADS 3 ----
+// [CONFIRMAR — critério recebido assim; nota do médico de que "hipoecoica
+// ou heterogênea" pode vir a virar "hipoecoica ou isoecoica" no futuro; não
+// alterado sem confirmação dele.] Os 4 critérios do "provavelmente
+// benigno": margem circunscrita, forma oval, orientação paralela à pele e
+// ecotextura hipoecoica ou heterogênea, todos precisam ser verdadeiros.
+// Só se aplica ao nódulo detalhado — o nódulo padrão tem esses 4 descritores
+// fixos por construção e portanto é sempre compatível (nunca dispara aviso).
+export function noduloCompativelComBirads3(n) {
+  return (
+    n.margin === "circunscrita" &&
+    n.shape === "oval" &&
+    n.orientation === "paralela" &&
+    (n.echo === "hipoecoica" || n.echo === "heterogenea")
+  );
+}
+
+export const AVISO_BIRADS3_LINHA1 =
+  "Nódulo não atende aos critérios de BI-RADS 3. O nódulo não apresenta todas as características necessárias " +
+  "(margem circunscrita, forma oval, orientação paralela e ecotextura hipoecoica ou heterogênea) para classificação como provavelmente benigno.";
+export const AVISO_BIRADS3_LINHA2 = "Selecione a categoria BI-RADS apropriada.";
+
 export function worstNoduleIdx(nodules) {
   let worst = 0, worstFlags = -1;
   nodules.forEach((n, i) => {
