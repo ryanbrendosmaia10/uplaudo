@@ -400,25 +400,39 @@ export default function LaudoVozIA() {
         "\n\nMÁSCARA:\n" + mascaraTexto +
         blocoAlteracoes +
         blocoTranscricao;
-      // Log de depuração do payload (removível)
-      console.log("[LaudoVoz] payload gerarLaudo:", conteudo);
       const response = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
+          model: "claude-sonnet-5",
           max_tokens: 2000,
           messages: [{ role: "user", content: conteudo }],
         }),
       });
-      const data = await response.json();
-      if (data.error) throw new Error(data.error.message || "Erro da API");
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error(
+          response.ok
+            ? "O servidor respondeu sem um corpo JSON válido."
+            : `O servidor respondeu com erro (status ${response.status}) sem detalhes no corpo.`
+        );
+      }
+      if (data.error) {
+        const mensagemErro = typeof data.error === "string" ? data.error : data.error.message;
+        throw new Error(mensagemErro || `Erro da API (status ${response.status})`);
+      }
       const texto = extractText(data);
       if (!texto) throw new Error("A IA não retornou texto.");
       if (laudoEditorRef.current) laudoEditorRef.current.textContent = texto;
       showToast("Laudo gerado. Revise antes de usar.");
     } catch (e) {
-      setErro("Falha ao gerar o laudo: " + e.message);
+      const mensagem =
+        e instanceof TypeError
+          ? "Não foi possível conectar ao servidor. Verifique sua internet e tente novamente."
+          : e.message;
+      setErro("Falha ao gerar o laudo: " + mensagem);
     } finally {
       setBusy(false);
       setBusyMsg("");
