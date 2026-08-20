@@ -23,11 +23,16 @@ const chipCls = (ativo) =>
     ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
     : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600");
 
-function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio }) {
+function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio, desabilitado, dica }) {
   return (
     <div>
       <div className={rotuloSelect}>{titulo}</div>
-      <select value={valor ?? ""} onChange={(e) => aoMudar(e.target.value || null)} className={selectCls}>
+      <select
+        value={valor ?? ""}
+        onChange={(e) => aoMudar(e.target.value || null)}
+        disabled={desabilitado}
+        className={selectCls + (desabilitado ? " opacity-60 cursor-not-allowed" : "")}
+      >
         {!semVazio && <option value="">selecionar</option>}
         {opcoes.map((o) => (
           <option key={o.id} value={o.id}>
@@ -36,6 +41,7 @@ function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio }) {
           </option>
         ))}
       </select>
+      {dica && <div className="text-[11px] text-amber-300 mt-0.5">{dica}</div>}
     </div>
   );
 }
@@ -54,6 +60,21 @@ export default function MamaBuilder({ aoAtualizar }) {
 
   const setNodField = (i, key, val) =>
     setNodules((prev) => prev.map((n, j) => (j === i ? { ...n, [key]: val } : n)));
+
+  // Bloco 4b: forma "redonda" tem por definição 3 eixos iguais e não pode
+  // ter orientação paralela à pele — a combinação seria contraditória. Ao
+  // escolher redonda, a orientação é travada em "não paralela" (consequência
+  // lógica direta, não uma decisão do app). Saindo de redonda, o campo
+  // volta a ficar livre, com "paralela" pré-selecionada como padrão.
+  const setNodShape = (i, shapeVal) =>
+    setNodules((prev) =>
+      prev.map((n, j) => {
+        if (j !== i) return n;
+        if (shapeVal === "redonda") return { ...n, shape: shapeVal, orientation: "nao_paralela" };
+        if (n.shape === "redonda" || n.orientation == null) return { ...n, shape: shapeVal, orientation: "paralela" };
+        return { ...n, shape: shapeVal };
+      })
+    );
   const definirQtd = (qtd) =>
     setNodules((prev) => {
       const novo = prev.slice(0, qtd).map((n) => ({ ...n }));
@@ -235,8 +256,15 @@ export default function MamaBuilder({ aoAtualizar }) {
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <SelectGrupo titulo="Forma" opcoes={SHAPE} valor={n.shape} aoMudar={(v) => setNodField(i, "shape", v)} />
-              <SelectGrupo titulo="Orientação" opcoes={ORIENTATION} valor={n.orientation} aoMudar={(v) => setNodField(i, "orientation", v)} />
+              <SelectGrupo titulo="Forma" opcoes={SHAPE} valor={n.shape} aoMudar={(v) => setNodShape(i, v)} />
+              <SelectGrupo
+                titulo="Orientação"
+                opcoes={ORIENTATION}
+                valor={n.orientation}
+                aoMudar={(v) => setNodField(i, "orientation", v)}
+                desabilitado={n.shape === "redonda"}
+                dica={n.shape === "redonda" ? "Redonda tem 3 eixos iguais: orientação não paralela por definição." : null}
+              />
               <SelectGrupo titulo="Margem" opcoes={MARGIN} valor={n.margin} aoMudar={(v) => setNodField(i, "margin", v)} />
               <SelectGrupo titulo="Padrão de eco" opcoes={ECHO} valor={n.echo} aoMudar={(v) => setNodField(i, "echo", v)} />
               <SelectGrupo titulo="Características posteriores" opcoes={POSTERIOR} valor={n.posterior} aoMudar={(v) => setNodField(i, "posterior", v)} />
