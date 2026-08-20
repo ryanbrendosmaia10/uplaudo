@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   SHAPE, ORIENTATION, MARGIN, ECHO, POSTERIOR, CALC, LATERALITY,
   TISSUE_PADRAO, NODULO_VAZIO, scoreFor, montarLaudoMama,
+  CATEGORIAS_BIRADS, NODULO_PADRAO_MAMA_VAZIO, CISTOS_VAZIO,
 } from "./birads.js";
 
 // MamaBuilder — interface do módulo BI-RADS no modo "Montar por cliques".
@@ -42,12 +43,14 @@ function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio }) {
 export default function MamaBuilder({ aoAtualizar }) {
   const [tissueEnabled, setTissueEnabled] = useState(false);
   const [tissue, setTissue] = useState(TISSUE_PADRAO);
-  const [cystPresent, setCystPresent] = useState(false);
+  const [cistos, setCistos] = useState(CISTOS_VAZIO);
   const [nodules, setNodules] = useState([]);
+  const [nodulosPadrao, setNodulosPadrao] = useState([]);
+  const [categoria, setCategoria] = useState("");
 
   useEffect(() => {
-    aoAtualizar(montarLaudoMama(tissueEnabled, tissue, cystPresent, nodules));
-  }, [tissueEnabled, tissue, cystPresent, nodules, aoAtualizar]);
+    aoAtualizar(montarLaudoMama(tissueEnabled, tissue, cistos, nodules, nodulosPadrao, categoria));
+  }, [tissueEnabled, tissue, cistos, nodules, nodulosPadrao, categoria, aoAtualizar]);
 
   const setNodField = (i, key, val) =>
     setNodules((prev) => prev.map((n, j) => (j === i ? { ...n, [key]: val } : n)));
@@ -57,6 +60,24 @@ export default function MamaBuilder({ aoAtualizar }) {
       while (novo.length < qtd) novo.push({ ...NODULO_VAZIO });
       return novo;
     });
+
+  // "3" é só o valor inicial de conveniência do primeiro Nódulo padrão —
+  // se o médico já escolheu uma categoria, um novo nódulo não a sobrescreve.
+  const adicionarNoduloPadrao = () => {
+    setNodulosPadrao((prev) => [...prev, { ...NODULO_PADRAO_MAMA_VAZIO }]);
+    setCategoria((prev) => prev || "3");
+  };
+  const removerNoduloPadrao = (i) => setNodulosPadrao((prev) => prev.filter((_, j) => j !== i));
+  const setNodPadraoField = (i, key, val) =>
+    setNodulosPadrao((prev) => prev.map((n, j) => (j === i ? { ...n, [key]: val } : n)));
+
+  const setCistoField = (key, val) => setCistos((prev) => ({ ...prev, [key]: val }));
+  const alternarModoCisto = (modo) =>
+    setCistos((prev) =>
+      prev.modo === modo
+        ? { ...CISTOS_VAZIO }
+        : { ...CISTOS_VAZIO, modo, lado: modo === "unilateral" ? "direita" : "" }
+    );
 
   return (
     <div className="space-y-4">
@@ -88,10 +109,103 @@ export default function MamaBuilder({ aoAtualizar }) {
               ]} />
           </div>
         )}
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={cystPresent} onChange={(e) => setCystPresent(e.target.checked)} className="w-4 h-4 accent-sky-500" />
-          <span className="text-slate-300">Cisto simples presente</span>
-        </label>
+      </div>
+
+      {/* Bloco 3b: Cistos mamários — item separado do nódulo, duas opções
+          mutuamente exclusivas. Convive com nódulo(s), sem categoria BI-RADS
+          própria (cisto simples não é classificado). */}
+      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
+        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Cistos mamários (opcional)</div>
+        <div className="flex flex-wrap gap-1.5">
+          <button onClick={() => alternarModoCisto("unilateral")} className={chipCls(cistos.modo === "unilateral")}>
+            Esparsos em uma mama
+          </button>
+          <button onClick={() => alternarModoCisto("bilateral")} className={chipCls(cistos.modo === "bilateral")}>
+            Esparsos bilateralmente
+          </button>
+        </div>
+        {cistos.modo === "unilateral" && (
+          <div className="grid grid-cols-2 gap-2">
+            <SelectGrupo semVazio titulo="Mama" opcoes={LATERALITY} valor={cistos.lado} aoMudar={(v) => setCistoField("lado", v || "direita")} />
+          </div>
+        )}
+        {cistos.modo === "bilateral" && (
+          <div className="grid grid-cols-2 gap-2">
+            <SelectGrupo titulo="Mama do maior cisto (opcional)" opcoes={LATERALITY} valor={cistos.ladoMaior} aoMudar={(v) => setCistoField("ladoMaior", v || "")} />
+          </div>
+        )}
+        {cistos.modo && (
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <div className={rotuloSelect}>Raio do maior cisto (h, opcional)</div>
+              <input value={cistos.hora} onChange={(e) => setCistoField("hora", e.target.value)} placeholder="2" inputMode="decimal" className={inputCls} />
+            </div>
+            <div>
+              <div className={rotuloSelect}>Medida do maior cisto (cm, opcional)</div>
+              <input value={cistos.medida} onChange={(e) => setCistoField("medida", e.target.value)} placeholder="0,5" inputMode="decimal" className={inputCls} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bloco 3a: Nódulo padrão — atalho para o caso banal, convive com o
+          caminho detalhado abaixo (que fica intocado). */}
+      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Nódulo padrão</div>
+          <button onClick={adicionarNoduloPadrao} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
+            + Nódulo padrão
+          </button>
+        </div>
+        {nodulosPadrao.map((n, i) => (
+          <div key={i} className="border border-slate-700 rounded-md p-3 space-y-2" data-testid={`nodulo-padrao-mama-${i + 1}`}>
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-semibold flex-1">Nódulo padrão {i + 1}</div>
+              <button
+                onClick={() => removerNoduloPadrao(i)}
+                aria-label={`Remover nódulo padrão ${i + 1}`}
+                className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-slate-700 leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className={rotuloSelect}>Raio (h, opcional)</div>
+                <input value={n.hora} onChange={(e) => setNodPadraoField(i, "hora", e.target.value)} placeholder="10" inputMode="decimal" className={inputCls} />
+              </div>
+              <SelectGrupo titulo="Mama (opcional)" opcoes={LATERALITY} valor={n.lado} aoMudar={(v) => setNodPadraoField(i, "lado", v || "")} />
+            </div>
+            <div>
+              <div className={rotuloSelect}>Medidas (cm, opcional)</div>
+              <div className="grid grid-cols-3 gap-2">
+                <input value={n.m1} onChange={(e) => setNodPadraoField(i, "m1", e.target.value)} placeholder="1,2" inputMode="decimal" className={inputCls} />
+                <input value={n.m2} onChange={(e) => setNodPadraoField(i, "m2", e.target.value)} placeholder="0,8" inputMode="decimal" className={inputCls} />
+                <input value={n.m3} onChange={(e) => setNodPadraoField(i, "m3", e.target.value)} placeholder="1,0" inputMode="decimal" className={inputCls} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className={rotuloSelect}>Distância da papila (cm, opcional)</div>
+                <input value={n.distPapila} onChange={(e) => setNodPadraoField(i, "distPapila", e.target.value)} placeholder="3" inputMode="decimal" className={inputCls} />
+              </div>
+              <div>
+                <div className={rotuloSelect}>Distância da pele (cm, opcional)</div>
+                <input value={n.distPele} onChange={(e) => setNodPadraoField(i, "distPele", e.target.value)} placeholder="0,5" inputMode="decimal" className={inputCls} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Bloco 3: categoria BI-RADS final — sempre manual, nunca calculada. */}
+      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3">
+        <SelectGrupo
+          titulo="Classificação final (ACR BI-RADS)"
+          opcoes={CATEGORIAS_BIRADS.map((c) => ({ id: c, label: c }))}
+          valor={categoria}
+          aoMudar={(v) => setCategoria(v || "")}
+        />
       </div>
 
       {/* Quantidade de nódulos */}
@@ -151,11 +265,9 @@ export default function MamaBuilder({ aoAtualizar }) {
                 <input value={n.m3} onChange={(e) => setNodField(i, "m3", e.target.value)} placeholder="1,0" className={inputCls} />
               </div>
             </div>
-            <div className="text-xs text-slate-400 leading-relaxed border-t border-slate-700 pt-2">
-              <span className="text-amber-300 font-semibold">Sugestão (a confirmar pelo médico):</span>{" "}
-              <span className="text-slate-200 font-semibold" data-testid={`birads-${i + 1}`}>{s.tr}</span> · {s.sub}
-              <br />
-              Probabilidade de malignidade: {s.risk} · Conduta: {s.mgmt}
+            <div className="text-xs text-slate-400 leading-relaxed border-t border-slate-700 pt-2" data-testid={`suspeitas-${i + 1}`}>
+              {s.flags} característica{s.flags === 1 ? "" : "s"} suspeita{s.flags === 1 ? "" : "s"} (informativo — a
+              categoria final é sempre escolhida pelo médico no campo "Classificação final" abaixo).
             </div>
           </div>
         );

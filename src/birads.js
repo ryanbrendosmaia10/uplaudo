@@ -5,6 +5,8 @@
 // sempre ser confirmada pelo médico. Não alterar textos ou a heurística sem
 // revisão do médico. A interface fica em src/MamaBuilder.jsx.
 
+import { aplicarMedida, normalizarValorMedida } from "./camposMedida.js";
+
 export const SHAPE = [
   { id: "oval", label: "Oval", suspicious: false, text: "oval" },
   { id: "redonda", label: "Redonda", suspicious: false, text: "redondo" },
@@ -54,6 +56,95 @@ export const LATERALITY = [
 ];
 
 const findOpt = (list, id) => list.find((o) => o.id === id) || null;
+
+// ---- Bloco 3: categoria BI-RADS única e manual para o exame ----
+// Uma só CLASSIFICAÇÃO ULTRASSONOGRÁFICA por laudo, sempre escolhida pelo
+// médico (nunca somada, calculada ou tirada do pior achado). "3" é apenas o
+// valor inicial de conveniência quando o primeiro Nódulo padrão é criado.
+export const CATEGORIAS_BIRADS = ["0", "1", "2", "3", "4", "5", "6"];
+
+// ---- Bloco 3a: Mama — "Nódulo padrão" ----
+// Atalho para o caso banal: um clique gera a frase completa (forma oval,
+// orientação paralela, margens circunscritas, ecotextura hipoecoica fixas
+// no texto), deixando para o médico só localização/distâncias/medidas.
+// Sem seletor de ecogenicidade aqui — quem precisar de outra usa o caminho
+// detalhado acima. Convive com ele, não o substitui.
+export const NODULO_PADRAO_MAMA_VAZIO = {
+  hora: "",
+  lado: "",
+  m1: "", m2: "", m3: "",
+  distPapila: "",
+  distPele: "",
+};
+
+export function describeNoduloPadraoMama(n) {
+  const clausulas = ["Nódulo, de forma oval, com orientação paralela, margens circunscritas, ecotextura hipoecoica"];
+
+  const hora = (n.hora || "").trim();
+  if (hora && n.lado) {
+    const ladoTxt = n.lado === "direita" ? "direita" : "esquerda";
+    clausulas.push(`localizado no raio de ${hora} horas, na mama ${ladoTxt}`);
+  }
+
+  const medidas = [n.m1, n.m2, n.m3].map(normalizarValorMedida).filter(Boolean);
+  if (medidas.length) clausulas.push(`medindo ${medidas.join(" x ")} cm`);
+
+  const y = normalizarValorMedida(n.distPapila);
+  const z = normalizarValorMedida(n.distPele);
+  if (y && z) clausulas.push(`distando ${y} cm da papila e ${z} cm da pele`);
+  else if (y) clausulas.push(`distando ${y} cm da papila`);
+  else if (z) clausulas.push(`distando ${z} cm da pele`);
+
+  return clausulas.join(", ") + ".";
+}
+
+// ---- Bloco 3b: Mama — Cistos ----
+// Item separado do nódulo, duas opções mutuamente exclusivas. Convive com
+// nódulo(s) padrão/detalhado(s), cada um com sua própria frase e linha de
+// impressão. Sem categoria BI-RADS própria (cisto simples não é classificado).
+//
+// AVISO: o texto exato dos dois modelos (unilateral/bilateral) foi
+// reconstruído a partir de fragmentos preservados do documento original
+// ("esparsos na mama direita.", "esparsos em ambas as mamas.", "o maior
+// localizado no raio de...") porque a citação literal completa se perdeu
+// numa compactação de contexto desta sessão. Preservei as regras de
+// montagem (campo em branco remove o trecho) e as duas frases finais que
+// tenho certeza. O meio da frase (conector entre "esparsos" e "o maior
+// localizado...") é minha melhor reconstrução, NÃO uma cópia literal
+// verificada do documento — o Dr. Ryan precisa conferir contra o original
+// antes de usar em laudo real. Ver relatório de entrega.
+export const CISTOS_VAZIO = {
+  modo: "", // "" | "unilateral" | "bilateral"
+  lado: "", // mama única (modo unilateral)
+  ladoMaior: "", // lado do maior cisto (modo bilateral, opcional)
+  hora: "",
+  medida: "",
+};
+
+export function describeCistos(c) {
+  if (!c.modo) return "";
+  const hora = (c.hora || "").trim();
+  const medida = normalizarValorMedida(c.medida);
+
+  if (c.modo === "unilateral") {
+    const ladoTxt = c.lado === "esquerda" ? "esquerda" : "direita";
+    const clausulas = [`Cistos simples esparsos na mama ${ladoTxt}`];
+    if (hora) clausulas.push(`o maior localizado no raio de ${hora} horas`);
+    if (medida) clausulas.push(`medindo ${medida} cm`);
+    return clausulas.join(", ") + ".";
+  }
+
+  // bilateral
+  const clausulas = ["Cistos simples esparsos em ambas as mamas"];
+  if (c.ladoMaior && hora) {
+    const ladoTxt = c.ladoMaior === "esquerda" ? "esquerda" : "direita";
+    clausulas.push(`o maior localizado na mama ${ladoTxt}, no raio de ${hora} horas`);
+  } else if (hora) {
+    clausulas.push(`o maior localizado no raio de ${hora} horas`);
+  }
+  if (medida) clausulas.push(`medindo ${medida} cm`);
+  return clausulas.join(", ") + ".";
+}
 
 export const TISSUE_PADRAO = { pattern: "homog_fibro", gtc: "moderado" };
 
@@ -143,16 +234,42 @@ export const NODULO_VAZIO = {
 
 // Monta o bloco de achados de mama. Sem máscara de laudo normal de mama em
 // mascaras.js, o texto é autônomo: tecido de fundo (opcional), cistos,
-// lista de nódulos e a classificação final. A categoria BI-RADS aparece
-// APENAS na linha de classificação, nunca na impressão.
-export function montarLaudoMama(tissueEnabled, tissue, cystPresent, nodules) {
+// lista de nódulos (detalhados + padrão, na ordem de criação de cada grupo)
+// e a classificação final. A categoria BI-RADS é sempre a escolha manual do
+// médico (parâmetro `categoria`) — nunca somada, calculada ou tirada do
+// pior achado — e aparece só na linha de classificação, nunca na frase do
+// nódulo nem na impressão.
+export function montarLaudoMama(tissueEnabled, tissue, cistos, nodules, nodulosPadrao, categoria) {
   const partes = [];
   if (tissueEnabled) partes.push(describeTissue(tissue));
-  if (cystPresent) partes.push("Presença de cisto(s) simples.");
-  if (nodules.length) {
-    partes.push(nodules.map((n, i) => `- N${i + 1}: ${describeNodule(n, false).replace(/^Nódulo /, "")}`).join("\n"));
-    const pior = scoreFor(nodules[worstNoduleIdx(nodules)]);
-    partes.push(`CLASSIFICAÇÃO ULTRASSONOGRÁFICA: ACR BIRADS (US) - ${pior.tr.replace("BI-RADS ", "")}`);
+
+  const textoCistos = describeCistos(cistos || CISTOS_VAZIO);
+  if (textoCistos) partes.push(textoCistos);
+
+  const totalNodulos = nodules.length + nodulosPadrao.length;
+  if (totalNodulos) {
+    const linhas = [];
+    let i = 0;
+    nodules.forEach((n) => {
+      i += 1;
+      linhas.push(`- N${i}: ${describeNodule(n, false).replace(/^Nódulo /, "")}`);
+    });
+    nodulosPadrao.forEach((n) => {
+      i += 1;
+      linhas.push(`- N${i}: ${describeNoduloPadraoMama(n).replace(/^Nódulo, /, "")}`);
+    });
+    partes.push(linhas.join("\n"));
   }
+
+  const impressao = [];
+  if (totalNodulos) {
+    const plural = totalNodulos > 1;
+    impressao.push(`- Nódulo${plural ? "s" : ""} mamário${plural ? "s" : ""}, conforme pormenorizado no corpo do laudo.`);
+  }
+  if (textoCistos) impressao.push("- Cistos mamários simples.");
+  if (impressao.length) partes.push("IMPRESSÃO DIAGNÓSTICA:\n" + impressao.join("\n"));
+
+  if (categoria) partes.push(`CLASSIFICAÇÃO ULTRASSONOGRÁFICA: ACR BI-RADS (US) - ${categoria}`);
+
   return partes.join("\n\n");
 }
