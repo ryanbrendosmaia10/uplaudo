@@ -134,6 +134,32 @@ export default [
         impressao: "Sinais ultrassonográficos compatíveis com colecistite aguda."
       },
       {
+        // Item 4: cálculo único, frase fixa com a alteração encaixada no meio.
+        rotulo: "Cálculo único",
+        requerInput: true,
+        campos: ["medidaX"],
+        descricao: "Vesícula Biliar: em situação habitual, normodistendida, de paredes finas, exibindo cálculo em seu interior medindo até cm.",
+        impressao: "Colecistolitíase (cálculo único)."
+      },
+      {
+        // Item 4: múltiplos cálculos, mesma estrutura.
+        rotulo: "Múltiplos cálculos",
+        requerInput: true,
+        campos: ["medidaX"],
+        descricao: "Vesícula Biliar: em situação habitual, normodistendida, de paredes finas, exibindo múltiplos cálculos medindo até cm.",
+        impressao: "Colecistolitíase (múltiplos cálculos)."
+      },
+      {
+        // Item 2: substitui a linha normal de vias biliares (nunca coexiste
+        // com ela) — descrição junta a frase da vesícula (inalterada) com a
+        // frase de vias biliares dada, com o termo fixo "hepatocolédoco".
+        rotulo: "Hepatocolédoco dilatado",
+        requerInput: true,
+        campos: ["medidaX"],
+        descricao: "Vesícula Biliar: em situação habitual, normodistendida, de paredes finas, com conteúdo homogêneo habitual. Ausência de dilatação das vias biliares intra e extra-hepáticas, com hepatocolédoco medindo mm.",
+        impressao: "Discreta dilatação do hepatocolédoco."
+      },
+      {
         rotulo: "Colecistectomia",
         descricao: "Vesícula Biliar: não caracterizada (status pós-operatório / colecistectomia).",
         impressao: "Status pós-colecistectomia."
