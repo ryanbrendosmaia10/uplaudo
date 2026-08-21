@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   SHAPE, ORIENTATION, MARGIN, ECHO, POSTERIOR, CALC, LATERALITY,
   TISSUE_VAZIO, gtcDesabilitadoPara, NODULO_VAZIO, scoreFor, montarLaudoMama,
-  CATEGORIAS_BIRADS, NODULO_PADRAO_MAMA_VAZIO, CISTOS_VAZIO,
+  CATEGORIAS_BIRADS, NODULO_PADRAO_MAMA_VAZIO, CISTOS_VAZIO, FORMA_PADRAO_MAMA,
   noduloCompativelComBirads3, AVISO_BIRADS3_LINHA1, AVISO_BIRADS3_LINHA2,
 } from "./birads.js";
 
@@ -84,8 +84,8 @@ export default function MamaBuilder({ aoAtualizar }) {
 
   // "3" é só o valor inicial de conveniência do primeiro Nódulo padrão —
   // se o médico já escolheu uma categoria, um novo nódulo não a sobrescreve.
-  const adicionarNoduloPadrao = () => {
-    setNodulosPadrao((prev) => [...prev, { ...NODULO_PADRAO_MAMA_VAZIO }]);
+  const adicionarNoduloPadrao = (variante = "padrao") => {
+    setNodulosPadrao((prev) => [...prev, { ...NODULO_PADRAO_MAMA_VAZIO, variante }]);
     setCategoria((prev) => prev || "3");
   };
   const removerNoduloPadrao = (i) => setNodulosPadrao((prev) => prev.filter((_, j) => j !== i));
@@ -192,19 +192,29 @@ export default function MamaBuilder({ aoAtualizar }) {
         )}
       </div>
 
-      {/* Bloco 3a: Nódulo padrão — atalho para o caso banal, convive com o
-          caminho detalhado abaixo (que fica intocado). */}
+      {/* Bloco 3a/5a-5c: Nódulo padrão e variantes — atalho para os casos
+          banais, convive com o caminho detalhado abaixo (que fica intocado). */}
       <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Nódulo padrão</div>
-          <button onClick={adicionarNoduloPadrao} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
-            + Nódulo padrão
-          </button>
+          <div className="flex flex-wrap gap-1.5">
+            <button onClick={() => adicionarNoduloPadrao("padrao")} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
+              + Nódulo padrão
+            </button>
+            <button onClick={() => adicionarNoduloPadrao("ilhota_gordura")} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
+              + Ilhota de gordura
+            </button>
+            <button onClick={() => adicionarNoduloPadrao("cisto_espesso")} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
+              + Cisto de conteúdo espesso
+            </button>
+          </div>
         </div>
         {nodulosPadrao.map((n, i) => (
           <div key={i} className="border border-slate-700 rounded-md p-3 space-y-2" data-testid={`nodulo-padrao-mama-${i + 1}`}>
             <div className="flex items-center gap-2">
-              <div className="text-sm font-semibold flex-1">Nódulo padrão {i + 1}</div>
+              <div className="text-sm font-semibold flex-1">
+                {n.variante === "ilhota_gordura" ? "Ilhota de gordura" : n.variante === "cisto_espesso" ? "Cisto de conteúdo espesso" : "Nódulo padrão"} {i + 1}
+              </div>
               <button
                 onClick={() => removerNoduloPadrao(i)}
                 aria-label={`Remover nódulo padrão ${i + 1}`}
@@ -213,20 +223,15 @@ export default function MamaBuilder({ aoAtualizar }) {
                 ×
               </button>
             </div>
+            {n.variante === "padrao" && (
+              <SelectGrupo semVazio titulo="Forma" opcoes={FORMA_PADRAO_MAMA} valor={n.forma} aoMudar={(v) => setNodPadraoField(i, "forma", v || "oval")} />
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <div className={rotuloSelect}>Raio (h, opcional)</div>
                 <input value={n.hora} onChange={(e) => setNodPadraoField(i, "hora", e.target.value)} placeholder="10" inputMode="decimal" className={inputCls} />
               </div>
               <SelectGrupo titulo="Mama (opcional)" opcoes={LATERALITY} valor={n.lado} aoMudar={(v) => setNodPadraoField(i, "lado", v || "")} />
-            </div>
-            <div>
-              <div className={rotuloSelect}>Medidas (cm, opcional)</div>
-              <div className="grid grid-cols-3 gap-2">
-                <input value={n.m1} onChange={(e) => setNodPadraoField(i, "m1", e.target.value)} placeholder="1,2" inputMode="decimal" className={inputCls} />
-                <input value={n.m2} onChange={(e) => setNodPadraoField(i, "m2", e.target.value)} placeholder="0,8" inputMode="decimal" className={inputCls} />
-                <input value={n.m3} onChange={(e) => setNodPadraoField(i, "m3", e.target.value)} placeholder="1,0" inputMode="decimal" className={inputCls} />
-              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -236,6 +241,14 @@ export default function MamaBuilder({ aoAtualizar }) {
               <div>
                 <div className={rotuloSelect}>Distância da pele (cm, opcional)</div>
                 <input value={n.distPele} onChange={(e) => setNodPadraoField(i, "distPele", e.target.value)} placeholder="0,5" inputMode="decimal" className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <div className={rotuloSelect}>Medidas (cm, opcional)</div>
+              <div className="grid grid-cols-3 gap-2">
+                <input value={n.m1} onChange={(e) => setNodPadraoField(i, "m1", e.target.value)} placeholder="1,2" inputMode="decimal" className={inputCls} />
+                <input value={n.m2} onChange={(e) => setNodPadraoField(i, "m2", e.target.value)} placeholder="0,8" inputMode="decimal" className={inputCls} />
+                <input value={n.m3} onChange={(e) => setNodPadraoField(i, "m3", e.target.value)} placeholder="1,0" inputMode="decimal" className={inputCls} />
               </div>
             </div>
           </div>
