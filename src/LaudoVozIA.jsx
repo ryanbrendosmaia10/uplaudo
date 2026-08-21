@@ -202,6 +202,18 @@ export default function LaudoVozIA() {
   const [segmentosPorAlteracao, setSegmentosPorAlteracao] = useState({}); // chave -> "VI" etc.
   const [ladosPorAlteracao, setLadosPorAlteracao] = useState({}); // chave -> "direito"/"esquerdo"
   const [mascaraId, setMascaraId] = useState(MASCARA_ID_PADRAO);
+
+  // Grupos recolhíveis nos painéis de alterações ("Montar por cliques" e
+  // "Ditado + IA"): chave é grupo.orgao, compartilhada entre os dois modos
+  // (recolher "Rins" num modo mantém recolhido no outro). Ausente = expandido
+  // (estado inicial preserva o comportamento de hoje, nada começa escondido).
+  const [gruposColapsados, setGruposColapsados] = useState({});
+  const alternarGrupoColapsado = (orgao) =>
+    setGruposColapsados((prev) => ({ ...prev, [orgao]: !prev[orgao] }));
+  const contarAtivosNoGrupo = (grupo, selecionados) =>
+    grupo.itens.filter((item) =>
+      selecionados.some((a) => chaveAlteracao(a.orgao, a.rotulo) === chaveAlteracao(grupo.orgao, item.rotulo))
+    ).length;
   const [mascaraTexto, setMascaraTexto] = useState(() => lerMascaraAtiva(MASCARA_ID_PADRAO));
   const [laudoFontSize, setLaudoFontSize] = useState(14);
   const recRef = useRef(null);
@@ -774,9 +786,24 @@ export default function LaudoVozIA() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {ALTERACOES[cliquesExameId].filter((g) => g.orgao !== "Ovários").map((grupo) => (
+                  {ALTERACOES[cliquesExameId].filter((g) => g.orgao !== "Ovários").map((grupo) => {
+                    const colapsado = !!gruposColapsados[grupo.orgao];
+                    const contagem = contarAtivosNoGrupo(grupo, cliquesChips);
+                    return (
                     <div key={grupo.orgao}>
-                      <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
+                      <button
+                        onClick={() => alternarGrupoColapsado(grupo.orgao)}
+                        className="w-full flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1 hover:text-slate-200"
+                      >
+                        <span className="inline-block w-3 text-[10px]">{colapsado ? "▸" : "▾"}</span>
+                        <span>{grupo.orgao}</span>
+                        {contagem > 0 && (
+                          <span className="px-1.5 rounded-full bg-sky-900/60 border border-sky-700 text-sky-300 text-[10px] font-normal">
+                            {contagem}
+                          </span>
+                        )}
+                      </button>
+                      {!colapsado && (
                       <div className="flex flex-wrap gap-1.5">
                         {grupo.itens.map((item) => {
                           const chave = chaveAlteracao(grupo.orgao, item.rotulo);
@@ -821,8 +848,10 @@ export default function LaudoVozIA() {
                           );
                         })}
                       </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -976,9 +1005,24 @@ export default function LaudoVozIA() {
                   </div>
                 ) : (
                   <div className="px-3 pb-2 pt-1 space-y-2">
-                    {ALTERACOES[mascaraId].map((grupo) => (
+                    {ALTERACOES[mascaraId].map((grupo) => {
+                      const colapsado = !!gruposColapsados[grupo.orgao];
+                      const contagem = contarAtivosNoGrupo(grupo, alteracoesSelecionadas);
+                      return (
                       <div key={grupo.orgao}>
-                        <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
+                        <button
+                          onClick={() => alternarGrupoColapsado(grupo.orgao)}
+                          className="w-full flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1 hover:text-slate-200"
+                        >
+                          <span className="inline-block w-3 text-[10px]">{colapsado ? "▸" : "▾"}</span>
+                          <span>{grupo.orgao}</span>
+                          {contagem > 0 && (
+                            <span className="px-1.5 rounded-full bg-sky-900/60 border border-sky-700 text-sky-300 text-[10px] font-normal">
+                              {contagem}
+                            </span>
+                          )}
+                        </button>
+                        {!colapsado && (
                         <div className="flex flex-wrap gap-1.5">
                           {grupo.itens.map((item) => {
                             const chave = chaveAlteracao(grupo.orgao, item.rotulo);
@@ -1023,8 +1067,10 @@ export default function LaudoVozIA() {
                             );
                           })}
                         </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
                 {alteracoesSelecionadas.length > 0 && (
