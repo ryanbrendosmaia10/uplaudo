@@ -211,14 +211,14 @@ export default [
         rotulo: "Cisto renal simples",
         requerInput: true,
         campos: ["lado", "terço", "medidaX"],
-        descricao: "Rins: tópicos, de forma, dimensões e contornos normais. Diferenciação corticomedular preservada. Presença de cisto simples no rim , polo , medindo cm. Não foram caracterizados sinais de macrolitíase ou hidronefrose.",
+        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Diferenciação córtico-medular preservada. Presença de cisto simples no rim , polo , medindo cm. Não foram caracterizados sinais de macrolitíase ou hidronefrose.",
         impressao: "Cisto renal simples no rim ."
       },
       {
         rotulo: "Cisto com fino septo",
         requerInput: true,
         campos: ["lado", "terço", "medidaX"],
-        descricao: "Rins: tópicos, de forma, dimensões e contornos normais. Diferenciação corticomedular preservada. Formação cística, de paredes finas, com fino septo, no terço do rim , medindo cm. Ausência de macrolitíase ou hidronefrose.",
+        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Diferenciação córtico-medular preservada. Formação cística, de paredes finas, com fino septo, no terço do rim , medindo cm. Ausência de macrolitíase ou hidronefrose.",
         impressao: "Cisto renal com fino septo no rim ."
       },
       {
@@ -242,7 +242,7 @@ export default [
         rotulo: "Nefrolitíase (único - com ectasia)",
         requerInput: true,
         campos: ["lado", "medidaX"],
-        descricao: "Rins: tópicos, de dimensões e contornos normais. Presença de cálculo no grupamento calicinal médio do rim , medindo cm, gerando discreta dilatação pielocalicinal a montante.",
+        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Diferenciação córtico-medular preservada. Presença de cálculo no grupamento calicinal médio do rim , medindo cm, gerando discreta dilatação pielocalicinal a montante.",
         impressao: "Cálculo renal no rim , condicionando discreta dilatação pielocalicinal a montante."
       },
       {
@@ -256,14 +256,14 @@ export default [
         rotulo: "Múltiplos cálculos (maior medida)",
         requerInput: true,
         campos: ["lado", "terço", "medidaX"],
-        descricao: "Rins: tópicos, de forma, dimensões e contornos normais. Observam-se múltiplos cálculos renais no rim , o maior medindo até cm, localizado no terço . Ausência de sinais de hidronefrose.",
+        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Diferenciação córtico-medular preservada. Observam-se múltiplos cálculos renais no rim , o maior medindo até cm, localizado no terço . Ausência de sinais de hidronefrose.",
         impressao: "Achados sugestivos de nefrolitíase múltipla não obstrutiva no rim ."
       },
       {
         rotulo: "Múltiplos cálculos (por grupamento)",
         requerInput: true,
         campos: ["lado", "medidaX", "medidaY"],
-        descricao: "Rins: tópicos, de forma, dimensões e contornos normais. Observam-se múltiplos cálculos renais no rim , assim dispostos:\n- grupamento superior, medindo cm;\n- grupamento médio, medindo cm.",
+        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Diferenciação córtico-medular preservada. Observam-se múltiplos cálculos renais no rim , assim dispostos:\n- grupamento superior, medindo cm;\n- grupamento médio, medindo cm.",
         impressao: "Nefrolitíase múltipla no rim , conforme descrito."
       },
       {
@@ -298,7 +298,7 @@ export default [
         rotulo: "Retração cortical focal (Cicatriz/Sequela)",
         requerInput: true,
         campos: ["lado", "terço"],
-        descricao: "Rins: tópicos, de forma, dimensões e ecotextura parenquimatosa habituais. Observa-se área de retração cortical focal do parênquima no terço do rim , de provável natureza residual / sequelar. Diferenciação corticomedular preservada nos demais segmentos. Ausência de macrolitíase ou hidronefrose.",
+        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Diferenciação córtico-medular preservada. Observa-se área de retração cortical focal do parênquima no terço do rim , de provável natureza residual / sequelar. Diferenciação corticomedular preservada nos demais segmentos. Ausência de macrolitíase ou hidronefrose.",
         impressao: "Área de retração cortical focal no rim , de provável etiologia sequelar."
       },
       {
