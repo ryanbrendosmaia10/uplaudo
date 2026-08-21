@@ -3,7 +3,7 @@ import {
   COMPOSITION, ECHOGENICITY, SHAPE, MARGIN, FOCI, LOCATIONS,
   lobeVolume, fmtVol, scoreFor, montarLaudoTireoide,
   GLAND_PADRAO, NODULO_VAZIO,
-  COMPOSICAO_PADRAO, ECOGENICIDADE_PADRAO, TERCOS_PADRAO, LOBOS_PADRAO, NODULO_PADRAO_VAZIO,
+  COMBINACOES_TIRADS_PADRAO, tiradsCombinacaoPadrao, TERCOS_PADRAO, LOBOS_PADRAO, NODULO_PADRAO_VAZIO,
 } from "./tirads.js";
 
 // TireoideBuilder — interface do módulo TI-RADS no modo "Montar por cliques".
@@ -138,8 +138,19 @@ export default function TireoideBuilder({ mascaraTexto, aoAtualizar }) {
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <SelectGrupo titulo="Composição" opcoes={COMPOSICAO_PADRAO} valor={n.composicao} aoMudar={(v) => setNodPadraoField(i, "composicao", v || "solido")} />
-              <SelectGrupo titulo="Ecogenicidade" opcoes={ECOGENICIDADE_PADRAO} valor={n.ecogenicidade} aoMudar={(v) => setNodPadraoField(i, "ecogenicidade", v || "isoecoico")} />
+              <div className="sm:col-span-2">
+                <div className="flex items-center gap-2">
+                  <div className={rotuloSelect + " flex-1"}>Combinação (composição + ecogenicidade)</div>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-sky-500 text-slate-900" data-testid={`tirads-padrao-${i + 1}`}>
+                    {tiradsCombinacaoPadrao(n.combinacao)}
+                  </span>
+                </div>
+                <select value={n.combinacao} onChange={(e) => setNodPadraoField(i, "combinacao", e.target.value)} className={selectCls}>
+                  {COMBINACOES_TIRADS_PADRAO.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label} — {tiradsCombinacaoPadrao(c.id)}</option>
+                  ))}
+                </select>
+              </div>
               <SelectGrupo titulo="Lobo (opcional)" opcoes={LOBOS_PADRAO} valor={n.lobo} aoMudar={(v) => setNodPadraoField(i, "lobo", v || "")} />
               {n.lobo && n.lobo !== "istmo" && (
                 <SelectGrupo titulo="Terço (opcional)" opcoes={TERCOS_PADRAO} valor={n.terco} aoMudar={(v) => setNodPadraoField(i, "terco", v || "")} />
