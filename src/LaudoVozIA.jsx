@@ -6,6 +6,8 @@ import TireoideBuilder from "./TireoideBuilder.jsx";
 import MamaBuilder from "./MamaBuilder.jsx";
 import OvariosPanel from "./OvariosPanel.jsx";
 import { aplicarOvarios, OVARIO_VAZIO } from "./ovarios.js";
+import RinsPanel from "./RinsPanel.jsx";
+import { aplicarRins, RIM_VAZIO } from "./rins.js";
 import {
   itemElegivelParaMedida,
   numeroDeCamposMedida,
@@ -160,6 +162,7 @@ export default function LaudoVozIA() {
   const [ovarioDireito, setOvarioDireito] = useState(OVARIO_VAZIO);
   const [ovarioEsquerdo, setOvarioEsquerdo] = useState(OVARIO_VAZIO);
   const ovariosRef = useRef({ direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO, orads: { ativo: false, valor: "" } });
+  const rinsRef = useRef({ direito: RIM_VAZIO, esquerdo: RIM_VAZIO });
   const [cliquesEdicaoManual, setCliquesEdicaoManual] = useState(false);
   const [cliquesFontSize, setCliquesFontSize] = useState(14);
   const cliquesEditorRef = useRef(null);
@@ -309,6 +312,13 @@ export default function LaudoVozIA() {
     if (exameId === "transvaginal") {
       texto = aplicarOvarios(texto, ovariosRef.current.direito, ovariosRef.current.esquerdo, ovariosRef.current.orads);
     }
+    // Item 3: rim direito/esquerdo, mesmo espírito do Bloco 7 — mas aditivo
+    // ao grupo "Rins" já existente. Se o médico já está usando algum chip
+    // antigo desse grupo, este painel novo não interfere (ver aplicarRins).
+    if (exameId === "abdome_total" || exameId === "vias_urinarias") {
+      const temAlteracaoRimAntiga = chips.some((c) => c.orgao === "Rins");
+      texto = aplicarRins(texto, rinsRef.current.direito, rinsRef.current.esquerdo, temAlteracaoRimAntiga);
+    }
     cliquesEditorRef.current.textContent = texto;
   };
 
@@ -359,6 +369,12 @@ export default function LaudoVozIA() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliquesExameId, cliquesChips, medidasPorChip]);
 
+  const aoMudarRins = useCallback((direito, esquerdo) => {
+    rinsRef.current = { direito, esquerdo };
+    if (!edicaoManualRef.current) atualizarEditorCliques(cliquesExameId, cliquesChips, medidasPorChip);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cliquesExameId, cliquesChips, medidasPorChip]);
+
   const alterarMedidaChip = (orgao, rotulo, indice, valor) => {
     const chave = chaveAlteracao(orgao, rotulo);
     const atual = medidasPorChip[chave] ? [...medidasPorChip[chave]] : [];
@@ -380,6 +396,7 @@ export default function LaudoVozIA() {
     ovariosRef.current = { direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO, orads: { ativo: false, valor: "" } };
     setOvarioDireito(OVARIO_VAZIO);
     setOvarioEsquerdo(OVARIO_VAZIO);
+    rinsRef.current = { direito: RIM_VAZIO, esquerdo: RIM_VAZIO };
     marcarEdicaoManual(false);
     builderTextoRef.current = "";
     if (!ehExameBuilder(id)) atualizarEditorCliques(id, []);
@@ -687,6 +704,11 @@ export default function LaudoVozIA() {
               {cliquesExameId === "transvaginal" && (
                 <div className="mb-3">
                   <OvariosPanel aoMudar={aoMudarOvarios} />
+                </div>
+              )}
+              {(cliquesExameId === "abdome_total" || cliquesExameId === "vias_urinarias") && (
+                <div className="mb-3">
+                  <RinsPanel aoMudar={aoMudarRins} />
                 </div>
               )}
               {(ALTERACOES[cliquesExameId] || []).filter((g) => g.orgao !== "Ovários").length === 0 ? (
