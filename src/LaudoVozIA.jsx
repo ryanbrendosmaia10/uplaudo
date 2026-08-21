@@ -4,6 +4,8 @@ import { ALTERACOES } from "./alteracoes/index.js";
 import { montarLaudo } from "./montarLaudo";
 import TireoideBuilder from "./TireoideBuilder.jsx";
 import MamaBuilder from "./MamaBuilder.jsx";
+import OvariosPanel from "./OvariosPanel.jsx";
+import { aplicarOvarios, OVARIO_VAZIO } from "./ovarios.js";
 import {
   itemElegivelParaMedida,
   numeroDeCamposMedida,
@@ -132,6 +134,9 @@ export default function LaudoVozIA() {
   const [cliquesExameId, setCliquesExameId] = useState(MASCARA_ID_PADRAO);
   const [cliquesChips, setCliquesChips] = useState([]);
   const [medidasPorChip, setMedidasPorChip] = useState({}); // chave -> [v1,v2,v3]
+  const [ovarioDireito, setOvarioDireito] = useState(OVARIO_VAZIO);
+  const [ovarioEsquerdo, setOvarioEsquerdo] = useState(OVARIO_VAZIO);
+  const ovariosRef = useRef({ direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO });
   const [cliquesEdicaoManual, setCliquesEdicaoManual] = useState(false);
   const [cliquesFontSize, setCliquesFontSize] = useState(14);
   const cliquesEditorRef = useRef(null);
@@ -264,9 +269,16 @@ export default function LaudoVozIA() {
     });
 
   const atualizarEditorCliques = (exameId, chips, mapaMedidas = medidasPorChip) => {
-    if (cliquesEditorRef.current) {
-      cliquesEditorRef.current.textContent = montarLaudo(lerMascaraAtiva(exameId), chipsComMedidas(chips, mapaMedidas));
+    if (!cliquesEditorRef.current) return;
+    let texto = montarLaudo(lerMascaraAtiva(exameId), chipsComMedidas(chips, mapaMedidas));
+    // Bloco 7: ovário direito/esquerdo é um recurso à parte do motor de
+    // chips (não mexe em montarLaudo.js) — aplicado por cima do texto já
+    // montado, só na pélvica transvaginal, só quando algum lado sai do
+    // estado padrão (ver aplicarOvarios em src/ovarios.js).
+    if (exameId === "transvaginal") {
+      texto = aplicarOvarios(texto, ovariosRef.current.direito, ovariosRef.current.esquerdo);
     }
+    cliquesEditorRef.current.textContent = texto;
   };
 
   // Callback estável para os builders (tireoide/mama): guarda o texto mais
@@ -295,6 +307,14 @@ export default function LaudoVozIA() {
     if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, novos, mapaMedidas);
   };
 
+  const aoMudarOvarios = useCallback((direito, esquerdo) => {
+    ovariosRef.current = { direito, esquerdo };
+    setOvarioDireito(direito);
+    setOvarioEsquerdo(esquerdo);
+    if (!edicaoManualRef.current) atualizarEditorCliques(cliquesExameId, cliquesChips, medidasPorChip);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cliquesExameId, cliquesChips, medidasPorChip]);
+
   const alterarMedidaChip = (orgao, rotulo, indice, valor) => {
     const chave = chaveAlteracao(orgao, rotulo);
     const atual = medidasPorChip[chave] ? [...medidasPorChip[chave]] : [];
@@ -312,6 +332,9 @@ export default function LaudoVozIA() {
     setCliquesExameId(id);
     setCliquesChips([]);
     setMedidasPorChip({});
+    ovariosRef.current = { direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO };
+    setOvarioDireito(OVARIO_VAZIO);
+    setOvarioEsquerdo(OVARIO_VAZIO);
     marcarEdicaoManual(false);
     builderTextoRef.current = "";
     if (!ehExameBuilder(id)) atualizarEditorCliques(id, []);
@@ -597,13 +620,18 @@ export default function LaudoVozIA() {
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
                 Alterações
               </div>
-              {(ALTERACOES[cliquesExameId] || []).length === 0 ? (
+              {cliquesExameId === "transvaginal" && (
+                <div className="mb-3">
+                  <OvariosPanel aoMudar={aoMudarOvarios} />
+                </div>
+              )}
+              {(ALTERACOES[cliquesExameId] || []).filter((g) => g.orgao !== "Ovários").length === 0 ? (
                 <div className="text-sm text-slate-500">
                   Sem alterações cadastradas para este exame. Você pode editar o laudo diretamente no editor ao lado.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {ALTERACOES[cliquesExameId].map((grupo) => (
+                  {ALTERACOES[cliquesExameId].filter((g) => g.orgao !== "Ovários").map((grupo) => (
                     <div key={grupo.orgao}>
                       <div className="text-xs font-semibold text-slate-400 mb-1">{grupo.orgao}</div>
                       <div className="flex flex-wrap gap-1.5">
