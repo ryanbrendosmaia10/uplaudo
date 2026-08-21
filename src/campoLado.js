@@ -24,6 +24,7 @@ const ROTULOS_COM_LADO = new Set([
   "Angiomiolipoma renal",
   "Ureterocele",
   "Cisto simples pós-menopausa",
+  "Cisto simples",
   "O-RADS 2: Cisto simples",
   "O-RADS 2: Lesão benigna típica (Cisto dermoide / Endometrioma)",
   "O-RADS 3: Cisto multilocular liso / Cisto de paredes irregulares",

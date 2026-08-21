@@ -780,13 +780,13 @@ export default function LaudoVozIA() {
                   <RinsPanel aoMudar={aoMudarRins} />
                 </div>
               )}
-              {(ALTERACOES[cliquesExameId] || []).filter((g) => g.orgao !== "Ovários").length === 0 ? (
+              {(ALTERACOES[cliquesExameId] || []).filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).length === 0 ? (
                 <div className="text-sm text-slate-500">
                   Sem alterações cadastradas para este exame. Você pode editar o laudo diretamente no editor ao lado.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {ALTERACOES[cliquesExameId].filter((g) => g.orgao !== "Ovários").map((grupo) => {
+                  {ALTERACOES[cliquesExameId].filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).map((grupo) => {
                     const colapsado = !!gruposColapsados[grupo.orgao];
                     const contagem = contarAtivosNoGrupo(grupo, cliquesChips);
                     return (

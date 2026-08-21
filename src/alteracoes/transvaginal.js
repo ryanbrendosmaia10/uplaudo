@@ -27,6 +27,11 @@ export default [
         rotulo: "Sinais de Adenomiose",
         descricao: "Útero: em AVF, mediano, com volume aumentado, contornos regulares e ecotextura miometrial heterogênea, por vezes com áreas ecogênicas de permeio e sombras posteriores 'em leque', notando-se indefinição da interface juncional miometrio-endometrial.",
         impressao: "Sinais ultrassonográficos sugestivos de adenomiose."
+      },
+      {
+        rotulo: "Histerectomia total (útero não caracterizado)",
+        descricao: "Útero: não caracterizado, em conformidade com relato de cirurgia prévia. Ausência de lesões expansivas na loja uterina.",
+        impressao: "Sinais de histerectomia total."
       }
     ]
   },
@@ -84,6 +89,13 @@ export default [
         requerInput: true,
         campos: ["lado", "medidaX"],
         descricao: "Ovários: de dimensões reduzidas, com contornos regulares, exibindo no ovário imagem cística, anecoica, unilocular, de paredes finas e regulares, sem septações ou vegetações, medindo cerca de cm.",
+        impressao: "Cisto de aspecto simples no ovário ."
+      },
+      {
+        rotulo: "Cisto simples",
+        requerInput: true,
+        campos: ["lado", "medidaX"],
+        descricao: "Ovários: de contornos regulares e ecotextura habitual, com dimensões aumentadas no ovário à custa de formação cística anecoica, unilocular, de paredes finas e regulares, medindo cm.",
         impressao: "Cisto de aspecto simples no ovário ."
       }
     ]

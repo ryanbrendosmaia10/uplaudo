@@ -11,6 +11,7 @@ import viasUrinarias from "./vias_urinarias.js";
 import mama from "./mama.js";
 import prostata from "./prostata.js";
 import transvaginal from "./transvaginal.js";
+import pelvicaAbdominal from "./pelvica_abdominal.js";
 
 export const ALTERACOES = {
   abdome_total: abdomeTotal,
@@ -18,4 +19,5 @@ export const ALTERACOES = {
   mama,
   prostata,
   transvaginal,
+  pelvica_abdominal: pelvicaAbdominal,
 };
