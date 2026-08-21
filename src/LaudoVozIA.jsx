@@ -136,7 +136,7 @@ export default function LaudoVozIA() {
   const [medidasPorChip, setMedidasPorChip] = useState({}); // chave -> [v1,v2,v3]
   const [ovarioDireito, setOvarioDireito] = useState(OVARIO_VAZIO);
   const [ovarioEsquerdo, setOvarioEsquerdo] = useState(OVARIO_VAZIO);
-  const ovariosRef = useRef({ direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO });
+  const ovariosRef = useRef({ direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO, orads: { ativo: false, valor: "" } });
   const [cliquesEdicaoManual, setCliquesEdicaoManual] = useState(false);
   const [cliquesFontSize, setCliquesFontSize] = useState(14);
   const cliquesEditorRef = useRef(null);
@@ -276,7 +276,7 @@ export default function LaudoVozIA() {
     // montado, só na pélvica transvaginal, só quando algum lado sai do
     // estado padrão (ver aplicarOvarios em src/ovarios.js).
     if (exameId === "transvaginal") {
-      texto = aplicarOvarios(texto, ovariosRef.current.direito, ovariosRef.current.esquerdo);
+      texto = aplicarOvarios(texto, ovariosRef.current.direito, ovariosRef.current.esquerdo, ovariosRef.current.orads);
     }
     cliquesEditorRef.current.textContent = texto;
   };
@@ -307,8 +307,8 @@ export default function LaudoVozIA() {
     if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, novos, mapaMedidas);
   };
 
-  const aoMudarOvarios = useCallback((direito, esquerdo) => {
-    ovariosRef.current = { direito, esquerdo };
+  const aoMudarOvarios = useCallback((direito, esquerdo, orads) => {
+    ovariosRef.current = { direito, esquerdo, orads };
     setOvarioDireito(direito);
     setOvarioEsquerdo(esquerdo);
     if (!edicaoManualRef.current) atualizarEditorCliques(cliquesExameId, cliquesChips, medidasPorChip);
@@ -332,7 +332,7 @@ export default function LaudoVozIA() {
     setCliquesExameId(id);
     setCliquesChips([]);
     setMedidasPorChip({});
-    ovariosRef.current = { direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO };
+    ovariosRef.current = { direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO, orads: { ativo: false, valor: "" } };
     setOvarioDireito(OVARIO_VAZIO);
     setOvarioEsquerdo(OVARIO_VAZIO);
     marcarEdicaoManual(false);
