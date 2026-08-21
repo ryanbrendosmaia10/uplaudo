@@ -175,7 +175,7 @@ export default [
     orgao: "Vias Biliares",
     itens: [
       {
-        rotulo: "Ectasia do colédoco (s/ fator obstrutivo)",
+        rotulo: "Ectasia do hepatocolédoco (s/ fator obstrutivo)",
         requerInput: true,
         campos: ["medidaX"],
         descricao: "Vias Biliares: intra-hepáticas sem sinais de dilatação. Discreta ectasia do hepatocolédoco, calibre medindo cm, sem caracterização de fatores obstrutivos ao método.",
@@ -192,15 +192,15 @@ export default [
         rotulo: "Dilatação de vias biliares",
         requerInput: true,
         campos: ["medidaX"],
-        descricao: "Vias Biliares: intra e extra-hepáticas com calibres aumentados, notando-se o ducto colédoco medindo cm.",
+        descricao: "Vias Biliares: intra e extra-hepáticas com calibres aumentados, notando-se o hepatocolédoco medindo cm.",
         impressao: "Dilatação das vias biliares intra e extra-hepáticas."
       },
       {
         rotulo: "Coledocolitíase",
         requerInput: true,
         campos: ["medidaX"],
-        descricao: "Vias Biliares: ducto colédoco de calibre aumentado, apresentando no seu terço distal imagem hiperecogênica com sombra acústica posterior, medindo cm.",
-        impressao: "Dilatação do colédoco associada a imagem sugestiva de coledocolitíase."
+        descricao: "Vias Biliares: hepatocolédoco de calibre aumentado, apresentando no seu terço distal imagem hiperecogênica com sombra acústica posterior, medindo cm.",
+        impressao: "Dilatação do hepatocolédoco associada a imagem sugestiva de coledocolitíase."
       }
     ]
   },
@@ -249,8 +249,8 @@ export default [
         rotulo: "Nefrolitíase (único - não obstrutivo)",
         requerInput: true,
         campos: ["lado", "terço", "medidaX"],
-        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Presença de cálculo renal localizado no terço do rim , medindo cm, sem sinais de hidronefrose.",
-        impressao: "Achados sugestivos de nefrolitíase não obstrutiva no rim ."
+        descricao: "Rins: tópicos, de forma, dimensões, contornos e ecotextura normais. Diferenciação córtico-medular preservada. Nota-se cálculo no grupamento calicinal superior/médio/inferior do rim direito/esquerdo, medindo cerca de cm. Não observa-se sinais de macrolitíase ou hidronefrose.",
+        impressao: "Nefrolitíase não obstrutiva à direita/esquerda."
       },
       {
         rotulo: "Múltiplos cálculos (maior medida)",
