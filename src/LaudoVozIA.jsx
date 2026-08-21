@@ -15,6 +15,7 @@ import {
   unidadeDoLocus,
 } from "./camposMedida.js";
 import { itemTemCampoSegmento, aplicarCampoSegmento, SEGMENTOS_HEPATICOS } from "./campoSegmento.js";
+import { itemTemCampoLado, aplicarCampoLado } from "./campoLado.js";
 
 const IDS_MASCARAS = Object.keys(MASCARAS);
 const MASCARA_ID_PADRAO = IDS_MASCARAS[0];
@@ -110,6 +111,25 @@ function CampoSegmentoChip({ item, valor, aoMudar }) {
   );
 }
 
+// Campo de lado (direito/esquerdo) acoplado ao chip, mesmo padrão do campo
+// de segmento. Em branco não altera nada (só quando um valor é escolhido).
+function CampoLadoChip({ item, valor, aoMudar }) {
+  return (
+    <div className="flex items-center gap-1 mt-1 ml-1" onClick={(e) => e.stopPropagation()}>
+      <select
+        value={valor || ""}
+        onChange={(e) => aoMudar(e.target.value)}
+        aria-label={`Lado de ${item.rotulo}`}
+        className="bg-slate-900 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-100 outline-none focus:border-sky-400"
+      >
+        <option value="">lado</option>
+        <option value="direito">Direito</option>
+        <option value="esquerdo">Esquerdo</option>
+      </select>
+    </div>
+  );
+}
+
 function BarraFormatacao({ aoFormatar, aoAumentar, aoDiminuir }) {
   return (
     <div className="px-3 py-1.5 border-b border-slate-700 flex items-center gap-1 bg-slate-800/60">
@@ -159,6 +179,7 @@ export default function LaudoVozIA() {
   const [cliquesChips, setCliquesChips] = useState([]);
   const [medidasPorChip, setMedidasPorChip] = useState({}); // chave -> [v1,v2,v3]
   const [segmentosPorChip, setSegmentosPorChip] = useState({}); // chave -> "VI" etc.
+  const [ladosPorChip, setLadosPorChip] = useState({}); // chave -> "direito"/"esquerdo"
   const [ovarioDireito, setOvarioDireito] = useState(OVARIO_VAZIO);
   const [ovarioEsquerdo, setOvarioEsquerdo] = useState(OVARIO_VAZIO);
   const ovariosRef = useRef({ direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO, orads: { ativo: false, valor: "" } });
@@ -179,6 +200,7 @@ export default function LaudoVozIA() {
   const [alteracoesSelecionadas, setAlteracoesSelecionadas] = useState([]);
   const [medidasPorAlteracao, setMedidasPorAlteracao] = useState({}); // chave -> [v1,v2,v3]
   const [segmentosPorAlteracao, setSegmentosPorAlteracao] = useState({}); // chave -> "VI" etc.
+  const [ladosPorAlteracao, setLadosPorAlteracao] = useState({}); // chave -> "direito"/"esquerdo"
   const [mascaraId, setMascaraId] = useState(MASCARA_ID_PADRAO);
   const [mascaraTexto, setMascaraTexto] = useState(() => lerMascaraAtiva(MASCARA_ID_PADRAO));
   const [laudoFontSize, setLaudoFontSize] = useState(14);
@@ -287,24 +309,25 @@ export default function LaudoVozIA() {
     setCliquesEdicaoManual(v);
   };
 
-  // chips com a descrição final (medidas do Bloco 1 e segmento do Item 1 já
-  // substituídos/removidos/inseridos).
-  const chipsComMedidas = (chips, mapaMedidas, mapaSegmentos) =>
+  // chips com a descrição final (medidas do Bloco 1, segmento do Item 1 e
+  // lado já substituídos/removidos/inseridos).
+  const chipsComMedidas = (chips, mapaMedidas, mapaSegmentos, mapaLados) =>
     chips.map((chip) => {
       const chave = chaveAlteracao(chip.orgao, chip.rotulo);
       let descricao = chip.descricao;
-      // Segmento primeiro: em "Nódulos hepáticos secundários", o campo de
-      // segmento é inserido usando "medindo" como âncora no texto original —
-      // se a medida rodasse antes e removesse esse trecho (médico deixou a
-      // medida em branco), a âncora já teria sumido.
+      // Segmento/lado primeiro: em alguns itens o campo é inserido usando
+      // "medindo" ou uma âncora fixa no texto original — se a medida rodasse
+      // antes e removesse esse trecho (médico deixou a medida em branco), a
+      // âncora já teria sumido.
       if (itemTemCampoSegmento(chip)) descricao = aplicarCampoSegmento(chip.rotulo, descricao, mapaSegmentos[chave]);
+      if (itemTemCampoLado(chip)) descricao = aplicarCampoLado(chip.rotulo, descricao, mapaLados[chave]);
       if (itemElegivelParaMedida(chip)) descricao = aplicarMedida(descricao, mapaMedidas[chave] || []);
       return descricao === chip.descricao ? chip : { ...chip, descricao };
     });
 
-  const atualizarEditorCliques = (exameId, chips, mapaMedidas = medidasPorChip, mapaSegmentos = segmentosPorChip) => {
+  const atualizarEditorCliques = (exameId, chips, mapaMedidas = medidasPorChip, mapaSegmentos = segmentosPorChip, mapaLados = ladosPorChip) => {
     if (!cliquesEditorRef.current) return;
-    let texto = montarLaudo(lerMascaraAtiva(exameId), chipsComMedidas(chips, mapaMedidas, mapaSegmentos));
+    let texto = montarLaudo(lerMascaraAtiva(exameId), chipsComMedidas(chips, mapaMedidas, mapaSegmentos, mapaLados));
     // Bloco 7: ovário direito/esquerdo é um recurso à parte do motor de
     // chips (não mexe em montarLaudo.js) — aplicado por cima do texto já
     // montado, só na pélvica transvaginal, só quando algum lado sai do
@@ -351,7 +374,13 @@ export default function LaudoVozIA() {
       delete mapaSegmentos[chave];
       setSegmentosPorChip(mapaSegmentos);
     }
-    if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, novos, mapaMedidas, mapaSegmentos);
+    let mapaLados = ladosPorChip;
+    if (jaTem && ladosPorChip[chave]) {
+      mapaLados = { ...ladosPorChip };
+      delete mapaLados[chave];
+      setLadosPorChip(mapaLados);
+    }
+    if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, novos, mapaMedidas, mapaSegmentos, mapaLados);
   };
 
   const alterarSegmentoChip = (orgao, rotulo, valor) => {
@@ -359,6 +388,13 @@ export default function LaudoVozIA() {
     const mapaSegmentos = { ...segmentosPorChip, [chave]: valor };
     setSegmentosPorChip(mapaSegmentos);
     if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, cliquesChips, medidasPorChip, mapaSegmentos);
+  };
+
+  const alterarLadoChip = (orgao, rotulo, valor) => {
+    const chave = chaveAlteracao(orgao, rotulo);
+    const mapaLados = { ...ladosPorChip, [chave]: valor };
+    setLadosPorChip(mapaLados);
+    if (!cliquesEdicaoManual) atualizarEditorCliques(cliquesExameId, cliquesChips, medidasPorChip, segmentosPorChip, mapaLados);
   };
 
   const aoMudarOvarios = useCallback((direito, esquerdo, orads) => {
@@ -393,6 +429,7 @@ export default function LaudoVozIA() {
     setCliquesChips([]);
     setMedidasPorChip({});
     setSegmentosPorChip({});
+    setLadosPorChip({});
     ovariosRef.current = { direito: OVARIO_VAZIO, esquerdo: OVARIO_VAZIO, orads: { ativo: false, valor: "" } };
     setOvarioDireito(OVARIO_VAZIO);
     setOvarioEsquerdo(OVARIO_VAZIO);
@@ -526,6 +563,13 @@ export default function LaudoVozIA() {
         return novo;
       });
     }
+    if (jaTem && ladosPorAlteracao[chave]) {
+      setLadosPorAlteracao((prev) => {
+        const novo = { ...prev };
+        delete novo[chave];
+        return novo;
+      });
+    }
   };
 
   const alterarMedidaAlteracao = (orgao, rotulo, indice, valor) => {
@@ -542,6 +586,11 @@ export default function LaudoVozIA() {
     setSegmentosPorAlteracao((prev) => ({ ...prev, [chave]: valor }));
   };
 
+  const alterarLadoAlteracao = (orgao, rotulo, valor) => {
+    const chave = chaveAlteracao(orgao, rotulo);
+    setLadosPorAlteracao((prev) => ({ ...prev, [chave]: valor }));
+  };
+
   const removerAlteracao = (orgao, rotulo) => {
     const chave = chaveAlteracao(orgao, rotulo);
     setAlteracoesSelecionadas((prev) => prev.filter((a) => chaveAlteracao(a.orgao, a.rotulo) !== chave));
@@ -554,6 +603,13 @@ export default function LaudoVozIA() {
     }
     if (segmentosPorAlteracao[chave]) {
       setSegmentosPorAlteracao((prev) => {
+        const novo = { ...prev };
+        delete novo[chave];
+        return novo;
+      });
+    }
+    if (ladosPorAlteracao[chave]) {
+      setLadosPorAlteracao((prev) => {
         const novo = { ...prev };
         delete novo[chave];
         return novo;
@@ -579,6 +635,7 @@ export default function LaudoVozIA() {
               const chave = chaveAlteracao(a.orgao, a.rotulo);
               let descricao = a.descricao;
               if (itemTemCampoSegmento(a)) descricao = aplicarCampoSegmento(a.rotulo, descricao, segmentosPorAlteracao[chave]);
+              if (itemTemCampoLado(a)) descricao = aplicarCampoLado(a.rotulo, descricao, ladosPorAlteracao[chave]);
               if (itemElegivelParaMedida(a)) descricao = aplicarMedida(descricao, medidasPorAlteracao[chave] || []);
               return `${i + 1}. ${a.rotulo}\n   Descrição: ${descricao}\n   Impressão: ${a.impressao}`;
             })
@@ -751,6 +808,13 @@ export default function LaudoVozIA() {
                                   item={item}
                                   valor={segmentosPorChip[chave]}
                                   aoMudar={(v) => alterarSegmentoChip(grupo.orgao, item.rotulo, v)}
+                                />
+                              )}
+                              {selecionado && itemTemCampoLado(item) && (
+                                <CampoLadoChip
+                                  item={item}
+                                  valor={ladosPorChip[chave]}
+                                  aoMudar={(v) => alterarLadoChip(grupo.orgao, item.rotulo, v)}
                                 />
                               )}
                             </div>
@@ -946,6 +1010,13 @@ export default function LaudoVozIA() {
                                     item={item}
                                     valor={segmentosPorAlteracao[chave]}
                                     aoMudar={(v) => alterarSegmentoAlteracao(grupo.orgao, item.rotulo, v)}
+                                  />
+                                )}
+                                {selecionado && itemTemCampoLado(item) && (
+                                  <CampoLadoChip
+                                    item={item}
+                                    valor={ladosPorAlteracao[chave]}
+                                    aoMudar={(v) => alterarLadoAlteracao(grupo.orgao, item.rotulo, v)}
                                   />
                                 )}
                               </div>
