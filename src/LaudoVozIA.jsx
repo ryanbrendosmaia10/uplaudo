@@ -16,26 +16,45 @@ import {
 } from "./camposMedida.js";
 import { itemTemCampoSegmento, aplicarCampoSegmento, SEGMENTOS_HEPATICOS } from "./campoSegmento.js";
 import { itemTemCampoLado, aplicarCampoLado } from "./campoLado.js";
+import AuthPanel from "./AuthPanel.jsx";
+import NovaAlteracaoForm from "./NovaAlteracaoForm.jsx";
+import {
+  assinarUsuario,
+  assinarMascaras,
+  obterMascaras,
+  salvarMascara,
+  excluirMascara,
+  assinarAlteracoes,
+  obterAlteracoes,
+  salvarAlteracao,
+  excluirAlteracao,
+  gerarIdCustom,
+} from "./nuvem.js";
 
 const IDS_MASCARAS = Object.keys(MASCARAS);
 const MASCARA_ID_PADRAO = IDS_MASCARAS[0];
 
-// Exames cujo painel do modo por cliques é um módulo dedicado (builder de
-// nódulos), não a lista genérica de chips. "mama" ainda não tem máscara em
-// mascaras.js, por isso só existe no modo por cliques.
-const EXAMES_CLIQUES = [...IDS_MASCARAS, "mama"];
 const ehExameBuilder = (id) => id === "tireoide" || id === "mama";
-const nomeExameCliques = (id) => (id === "mama" ? "Mama (nódulos)" : MASCARAS[id].nome);
 
 const chaveStorageMascara = (id) => `laudovoz_mascara_${id}`;
 const chaveAlteracao = (orgao, rotulo) => `${orgao}::${rotulo}`;
 
-const lerMascaraAtiva = (id) => {
+// ---- Fase 2: exames e alterações customizados pelo médico (Firebase quando
+// logado; senão localStorage — ver src/nuvem.js). Fallback local: uma lista
+// só, guardada como JSON, igual ao "Usar minha máscara" já existente. ----
+const CHAVE_MASCARAS_CUSTOM_LOCAIS = "laudovoz_mascaras_customizadas";
+const CHAVE_ALTERACOES_CUSTOM_LOCAIS = "laudovoz_alteracoes_customizadas";
+
+const lerListaLocal = (chave) => {
   try {
-    return localStorage.getItem(chaveStorageMascara(id)) || MASCARAS[id].texto;
+    const bruto = localStorage.getItem(chave);
+    return bruto ? JSON.parse(bruto) : [];
   } catch (e) {
-    return MASCARAS[id].texto;
+    return [];
   }
+};
+const salvarListaLocal = (chave, lista) => {
+  try { localStorage.setItem(chave, JSON.stringify(lista)); } catch (e) {}
 };
 
 const REGRAS_LAUDOVOZ = `Você é o motor de laudos do LaudoVoz, sistema do Dr. Ryan Maia (radiologista). Sua tarefa: receber a transcrição de um ditado de ultrassom e devolver o laudo completo estruturado.
@@ -197,6 +216,8 @@ export default function LaudoVozIA() {
   const [busy, setBusy] = useState(false);
   const [busyMsg, setBusyMsg] = useState("");
   const [abaEntrada, setAbaEntrada] = useState("ditado");
+  const [criandoExame, setCriandoExame] = useState(false);
+  const [nomeNovoExame, setNomeNovoExame] = useState("");
   const [alteracoesSelecionadas, setAlteracoesSelecionadas] = useState([]);
   const [medidasPorAlteracao, setMedidasPorAlteracao] = useState({}); // chave -> [v1,v2,v3]
   const [segmentosPorAlteracao, setSegmentosPorAlteracao] = useState({}); // chave -> "VI" etc.
@@ -214,6 +235,170 @@ export default function LaudoVozIA() {
     grupo.itens.filter((item) =>
       selecionados.some((a) => chaveAlteracao(a.orgao, a.rotulo) === chaveAlteracao(grupo.orgao, item.rotulo))
     ).length;
+  // ---- Fase 2: nuvem (Firebase) — login e máscaras/alterações customizadas.
+  // Sem login, tudo isso continua 100% local (localStorage), como sempre.
+  const [usuario, setUsuario] = useState(null);
+  const [mascarasNuvem, setMascarasNuvem] = useState({}); // id -> {nome?, texto, customizada?}
+  const [alteracoesNuvem, setAlteracoesNuvem] = useState([]);
+  const [mascarasLocais, setMascarasLocais] = useState(() => lerListaLocal(CHAVE_MASCARAS_CUSTOM_LOCAIS));
+  const [alteracoesLocais, setAlteracoesLocais] = useState(() => lerListaLocal(CHAVE_ALTERACOES_CUSTOM_LOCAIS));
+
+  useEffect(() => assinarUsuario(setUsuario), []);
+
+  useEffect(() => {
+    if (!usuario) { setMascarasNuvem({}); setAlteracoesNuvem([]); return; }
+    const unsub1 = assinarMascaras(usuario.uid, setMascarasNuvem);
+    const unsub2 = assinarAlteracoes(usuario.uid, setAlteracoesNuvem);
+    return () => { unsub1(); unsub2(); };
+  }, [usuario]);
+
+  // Login: sobe pra nuvem o que só existia neste navegador — só o que a
+  // nuvem ainda não tem (nunca sobrescreve o que já está lá, pra não perder
+  // dado mais novo de outro aparelho). Roda uma vez por login, com leitura
+  // direta (não a assinatura reativa, que pode ainda estar vazia nesse
+  // instante).
+  const migracaoPorUsuarioRef = useRef(null);
+  useEffect(() => {
+    if (!usuario || migracaoPorUsuarioRef.current === usuario.uid) return;
+    migracaoPorUsuarioRef.current = usuario.uid;
+    (async () => {
+      try {
+        const [nuvemMascaras, nuvemAlteracoes] = await Promise.all([
+          obterMascaras(usuario.uid),
+          obterAlteracoes(usuario.uid),
+        ]);
+        for (const id of IDS_MASCARAS) {
+          let textoLocal = null;
+          try { textoLocal = localStorage.getItem(chaveStorageMascara(id)); } catch (e) {}
+          if (textoLocal && !nuvemMascaras[id]) {
+            await salvarMascara(usuario.uid, id, { texto: textoLocal });
+          }
+        }
+        for (const m of mascarasLocais) {
+          if (!nuvemMascaras[m.id]) {
+            await salvarMascara(usuario.uid, m.id, { nome: m.nome, texto: m.texto, customizada: true });
+          }
+        }
+        const idsNuvem = new Set(nuvemAlteracoes.map((a) => a.id));
+        for (const a of alteracoesLocais) {
+          if (!idsNuvem.has(a.id)) {
+            await salvarAlteracao(usuario.uid, a.id, {
+              mascaraId: a.mascaraId, orgao: a.orgao, rotulo: a.rotulo, descricao: a.descricao, impressao: a.impressao || "",
+            });
+          }
+        }
+      } catch (e) {
+        // Falha de rede/permissão na migração: os dados continuam salvos
+        // localmente, nada se perde — só não sobe desta vez.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario]);
+
+  // Registro combinado de exames customizados (novos, não presentes em
+  // MASCARAS): nuvem quando logado, local quando não.
+  const registroMascarasCustom = usuario
+    ? Object.fromEntries(Object.entries(mascarasNuvem).filter(([id]) => !MASCARAS[id]))
+    : Object.fromEntries(mascarasLocais.map((m) => [m.id, m]));
+  const idsMascarasCustom = Object.keys(registroMascarasCustom);
+  const nomeExameCliques = (id) => {
+    if (id === "mama") return "Mama (nódulos)";
+    if (MASCARAS[id]) return MASCARAS[id].nome;
+    return registroMascarasCustom[id]?.nome || id;
+  };
+  // Exames cujo painel do modo por cliques é um módulo dedicado (builder de
+  // nódulos), não a lista genérica de chips. "mama" ainda não tem máscara em
+  // mascaras.js, por isso só existe no modo por cliques.
+  const EXAMES_CLIQUES = [...IDS_MASCARAS, ...idsMascarasCustom, "mama"];
+
+  const lerMascaraAtiva = (id) => {
+    if (usuario && mascarasNuvem[id]?.texto !== undefined) return mascarasNuvem[id].texto;
+    if (registroMascarasCustom[id]) return registroMascarasCustom[id].texto;
+    if (!MASCARAS[id]) return "";
+    try {
+      return localStorage.getItem(chaveStorageMascara(id)) || MASCARAS[id].texto;
+    } catch (e) {
+      return MASCARAS[id].texto;
+    }
+  };
+
+  // Alterações de um exame, com as customizadas do médico mescladas por
+  // grupo (orgao) — cria um grupo novo se o nome não existir ainda.
+  const alteracoesAtivas = (idExame) => {
+    const base = ALTERACOES[idExame] || [];
+    const extras = (usuario ? alteracoesNuvem : alteracoesLocais).filter((a) => a.mascaraId === idExame);
+    if (!extras.length) return base;
+    const grupos = base.map((g) => ({ ...g, itens: [...g.itens] }));
+    for (const a of extras) {
+      const orgao = a.orgao || "Personalizadas";
+      let grupo = grupos.find((g) => g.orgao === orgao);
+      if (!grupo) { grupo = { orgao, itens: [] }; grupos.push(grupo); }
+      grupo.itens.push({ rotulo: a.rotulo, descricao: a.descricao, impressao: a.impressao || "", _customId: a.id });
+    }
+    return grupos;
+  };
+
+  // montarLaudo.js só sabe substituir parágrafos cujo rótulo está no léxico
+  // fixo dela (ROTULOS_ORGAOS). Uma alteração customizada cujo parágrafo é
+  // novo (ex.: "Órgão X:", de um exame criado do zero) não está nesse léxico
+  // — sem isso, o clique só ANEXARIA a frase nova, deixando a linha "normal"
+  // antiga duplicada ao lado. O 3º parâmetro (opcional) de montarLaudo cobre
+  // esse caso sem tocar no léxico fixo nem em nenhuma chamada existente.
+  const rotulosExtrasParaExame = (idExame) => {
+    const extras = (usuario ? alteracoesNuvem : alteracoesLocais).filter((a) => a.mascaraId === idExame);
+    const vistos = new Set();
+    for (const a of extras) {
+      const m = /^([^:\n]+:)/.exec(a.descricao || "");
+      if (m) vistos.add(m[1]);
+    }
+    return [...vistos];
+  };
+
+  const salvarNovaMascaraCustom = async (nome) => {
+    const id = gerarIdCustom();
+    const dados = { nome, texto: "", customizada: true };
+    if (usuario) {
+      await salvarMascara(usuario.uid, id, dados);
+    } else {
+      const nova = [...mascarasLocais, { id, ...dados }];
+      setMascarasLocais(nova);
+      salvarListaLocal(CHAVE_MASCARAS_CUSTOM_LOCAIS, nova);
+    }
+    return id;
+  };
+
+  const excluirMascaraCustom = async (id) => {
+    if (usuario) {
+      await excluirMascara(usuario.uid, id).catch(() => {});
+    } else {
+      const nova = mascarasLocais.filter((m) => m.id !== id);
+      setMascarasLocais(nova);
+      salvarListaLocal(CHAVE_MASCARAS_CUSTOM_LOCAIS, nova);
+    }
+  };
+
+  const salvarNovaAlteracaoCustom = async ({ mascaraId: idExame, orgao, rotulo, descricao, impressao }) => {
+    const id = gerarIdCustom();
+    const dados = { mascaraId: idExame, orgao: orgao || "", rotulo, descricao, impressao: impressao || "" };
+    if (usuario) {
+      await salvarAlteracao(usuario.uid, id, dados);
+    } else {
+      const nova = [...alteracoesLocais, { id, ...dados }];
+      setAlteracoesLocais(nova);
+      salvarListaLocal(CHAVE_ALTERACOES_CUSTOM_LOCAIS, nova);
+    }
+  };
+
+  const excluirAlteracaoCustom = async (id) => {
+    if (usuario) {
+      await excluirAlteracao(usuario.uid, id).catch(() => {});
+    } else {
+      const nova = alteracoesLocais.filter((a) => a.id !== id);
+      setAlteracoesLocais(nova);
+      salvarListaLocal(CHAVE_ALTERACOES_CUSTOM_LOCAIS, nova);
+    }
+  };
+
   const [mascaraTexto, setMascaraTexto] = useState(() => lerMascaraAtiva(MASCARA_ID_PADRAO));
   const [laudoFontSize, setLaudoFontSize] = useState(14);
   const recRef = useRef(null);
@@ -339,7 +524,7 @@ export default function LaudoVozIA() {
 
   const atualizarEditorCliques = (exameId, chips, mapaMedidas = medidasPorChip, mapaSegmentos = segmentosPorChip, mapaLados = ladosPorChip) => {
     if (!cliquesEditorRef.current) return;
-    let texto = montarLaudo(lerMascaraAtiva(exameId), chipsComMedidas(chips, mapaMedidas, mapaSegmentos, mapaLados));
+    let texto = montarLaudo(lerMascaraAtiva(exameId), chipsComMedidas(chips, mapaMedidas, mapaSegmentos, mapaLados), rotulosExtrasParaExame(exameId));
     // Bloco 7: ovário direito/esquerdo é um recurso à parte do motor de
     // chips (não mexe em montarLaudo.js) — aplicado por cima do texto já
     // montado, só na pélvica transvaginal, só quando algum lado sai do
@@ -540,15 +725,44 @@ export default function LaudoVozIA() {
     setAlteracoesSelecionadas([]);
   };
 
+  const criarNovoExame = async () => {
+    const nome = nomeNovoExame.trim();
+    if (!nome) return;
+    const id = await salvarNovaMascaraCustom(nome);
+    setNomeNovoExame("");
+    setCriandoExame(false);
+    selecionarMascara(id);
+  };
+
+  const excluirExameAtual = async () => {
+    await excluirMascaraCustom(mascaraId);
+    selecionarMascara(MASCARA_ID_PADRAO);
+  };
+
   const editarMascaraTexto = (texto) => {
     setMascaraTexto(texto);
+    if (!MASCARAS[mascaraId]) {
+      // Exame customizado: o texto digitado É o conteúdo salvo, não um
+      // "override" por cima de nada.
+      if (usuario) {
+        salvarMascara(usuario.uid, mascaraId, { texto }).catch(() => {});
+      } else {
+        const nova = mascarasLocais.map((m) => (m.id === mascaraId ? { ...m, texto } : m));
+        setMascarasLocais(nova);
+        salvarListaLocal(CHAVE_MASCARAS_CUSTOM_LOCAIS, nova);
+      }
+      return;
+    }
     try { localStorage.setItem(chaveStorageMascara(mascaraId), texto); } catch (e) {}
+    if (usuario) salvarMascara(usuario.uid, mascaraId, { texto }).catch(() => {});
   };
 
   const restaurarMascaraPadrao = () => {
+    if (!MASCARAS[mascaraId]) return; // exame customizado não tem "padrão" pra restaurar
     const original = MASCARAS[mascaraId].texto;
     setMascaraTexto(original);
     try { localStorage.removeItem(chaveStorageMascara(mascaraId)); } catch (e) {}
+    if (usuario) excluirMascara(usuario.uid, mascaraId).catch(() => {});
     showToast("Máscara restaurada ao padrão.");
   };
 
@@ -635,7 +849,7 @@ export default function LaudoVozIA() {
       return;
     }
     setBusy(true);
-    setBusyMsg(`Gerando laudo (${MASCARAS[mascaraId].nome})…`);
+    setBusyMsg(`Gerando laudo (${nomeExameCliques(mascaraId)})…`);
     setErro("");
     try {
       // gerarLaudo é recriada a cada render, então alteracoesSelecionadas aqui
@@ -706,6 +920,9 @@ export default function LaudoVozIA() {
       <header className="px-4 py-3 border-b border-slate-700 bg-slate-800 flex items-center gap-3 flex-wrap">
         <h1 className="text-base font-semibold tracking-wide">LaudoVoz IA</h1>
         <span className="text-xs text-slate-400">protótipo v0.2 · montar por cliques ou ditado + IA</span>
+        <div className="ml-auto">
+          <AuthPanel usuario={usuario} />
+        </div>
       </header>
 
       {/* Abas de modo */}
@@ -780,13 +997,13 @@ export default function LaudoVozIA() {
                   <RinsPanel aoMudar={aoMudarRins} />
                 </div>
               )}
-              {(ALTERACOES[cliquesExameId] || []).filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).length === 0 ? (
+              {(alteracoesAtivas(cliquesExameId) || []).filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).length === 0 ? (
                 <div className="text-sm text-slate-500">
                   Sem alterações cadastradas para este exame. Você pode editar o laudo diretamente no editor ao lado.
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {ALTERACOES[cliquesExameId].filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).map((grupo) => {
+                  {alteracoesAtivas(cliquesExameId).filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).map((grupo) => {
                     const colapsado = !!gruposColapsados[grupo.orgao];
                     const contagem = contarAtivosNoGrupo(grupo, cliquesChips);
                     return (
@@ -823,6 +1040,15 @@ export default function LaudoVozIA() {
                               >
                                 {selecionado ? "✓ " : ""}{item.rotulo}
                               </button>
+                              {item._customId && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); excluirAlteracaoCustom(item._customId); }}
+                                  title="Excluir esta alteração customizada"
+                                  className="text-[10px] text-slate-500 hover:text-red-400 mt-0.5"
+                                >
+                                  excluir
+                                </button>
+                              )}
                               {selecionado && itemElegivelParaMedida(item) && (
                                 <CamposMedidaChip
                                   item={item}
@@ -854,6 +1080,11 @@ export default function LaudoVozIA() {
                   })}
                 </div>
               )}
+              <NovaAlteracaoForm
+                mascaraId={cliquesExameId}
+                gruposExistentes={(ALTERACOES[cliquesExameId] || []).map((g) => g.orgao)}
+                aoSalvar={salvarNovaAlteracaoCustom}
+              />
             </div>
           )}
         </section>
@@ -999,13 +1230,13 @@ export default function LaudoVozIA() {
                 <div className="px-3 pt-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   Alterações rápidas
                 </div>
-                {(ALTERACOES[mascaraId] || []).length === 0 ? (
+                {(alteracoesAtivas(mascaraId) || []).length === 0 ? (
                   <div className="px-3 pb-3 pt-1 text-sm text-slate-500">
                     Sem alterações cadastradas para este exame.
                   </div>
                 ) : (
                   <div className="px-3 pb-2 pt-1 space-y-2">
-                    {ALTERACOES[mascaraId].map((grupo) => {
+                    {alteracoesAtivas(mascaraId).map((grupo) => {
                       const colapsado = !!gruposColapsados[grupo.orgao];
                       const contagem = contarAtivosNoGrupo(grupo, alteracoesSelecionadas);
                       return (
@@ -1042,6 +1273,15 @@ export default function LaudoVozIA() {
                                 >
                                   {item.rotulo}
                                 </button>
+                                {item._customId && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); excluirAlteracaoCustom(item._customId); }}
+                                    title="Excluir esta alteração customizada"
+                                    className="text-[10px] text-slate-500 hover:text-red-400 mt-0.5"
+                                  >
+                                    excluir
+                                  </button>
+                                )}
                                 {selecionado && itemElegivelParaMedida(item) && (
                                   <CamposMedidaChip
                                     item={item}
@@ -1073,6 +1313,13 @@ export default function LaudoVozIA() {
                     })}
                   </div>
                 )}
+                <div className="px-3 pb-1">
+                  <NovaAlteracaoForm
+                    mascaraId={mascaraId}
+                    gruposExistentes={(ALTERACOES[mascaraId] || []).map((g) => g.orgao)}
+                    aoSalvar={salvarNovaAlteracaoCustom}
+                  />
+                </div>
                 {alteracoesSelecionadas.length > 0 && (
                   <div className="px-3 pb-3 pt-2 border-t border-slate-700">
                     <div className="text-xs font-semibold text-slate-400 mb-1">Selecionadas:</div>
@@ -1108,20 +1355,54 @@ export default function LaudoVozIA() {
                   onChange={(e) => selecionarMascara(e.target.value)}
                   className="bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-2 outline-none"
                 >
-                  {IDS_MASCARAS.map((id) => (
-                    <option key={id} value={id}>{MASCARAS[id].nome}</option>
+                  {[...IDS_MASCARAS, ...idsMascarasCustom].map((id) => (
+                    <option key={id} value={id}>{nomeExameCliques(id)}</option>
                   ))}
                 </select>
+                {MASCARAS[mascaraId] ? (
+                  <button
+                    onClick={restaurarMascaraPadrao}
+                    className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600"
+                  >
+                    Restaurar padrão
+                  </button>
+                ) : (
+                  <button
+                    onClick={excluirExameAtual}
+                    className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-red-900 text-red-300"
+                  >
+                    Excluir exame
+                  </button>
+                )}
                 <button
-                  onClick={restaurarMascaraPadrao}
+                  onClick={() => setCriandoExame((v) => !v)}
                   className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600"
                 >
-                  Restaurar padrão
+                  + Novo exame
                 </button>
               </div>
+              {criandoExame && (
+                <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2">
+                  <input
+                    autoFocus
+                    placeholder="Nome do exame novo (ex.: USG Partes Moles)"
+                    value={nomeNovoExame}
+                    onChange={(e) => setNomeNovoExame(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && criarNovoExame()}
+                    className="flex-1 bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-sky-400"
+                  />
+                  <button
+                    onClick={criarNovoExame}
+                    className="px-3 py-1.5 rounded-md text-sm bg-sky-600 hover:bg-sky-500 text-white"
+                  >
+                    Criar
+                  </button>
+                </div>
+              )}
               <textarea
                 value={mascaraTexto}
                 onChange={(e) => editarMascaraTexto(e.target.value)}
+                placeholder={MASCARAS[mascaraId] ? "" : "Escreva ou cole aqui o laudo normal completo deste exame."}
                 className="flex-1 min-h-48 bg-slate-800 text-slate-100 p-3 text-sm leading-relaxed resize-none outline-none font-mono"
               />
             </>

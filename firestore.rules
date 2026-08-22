@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Cada usuário só lê/escreve dentro do próprio espaço (usuarios/{uid}/...).
+// Nada mais é permitido — inclusive visitante sem login (request.auth == null).
+//
+// Como aplicar: Console do Firebase → Firestore Database → Regras → cole
+// este arquivo inteiro no lugar do que estiver lá → Publicar.
+// (Ou, com o Firebase CLI instalado: `firebase deploy --only firestore:rules`.)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usuarios/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

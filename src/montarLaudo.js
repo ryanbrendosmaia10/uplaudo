@@ -40,7 +40,7 @@ const PREFIXOS_MEDIDA = [
   "IPP:",
 ];
 
-const rotuloDaLinha = (linha) => ROTULOS_ORGAOS.find((r) => linha.startsWith(r)) || null;
+const rotuloDaLinha = (linha, rotulos = ROTULOS_ORGAOS) => rotulos.find((r) => linha.startsWith(r)) || null;
 
 const ehInicioImpressao = (linha) => {
   const t = linha.trim();
@@ -64,8 +64,8 @@ const ehLinhaNormalidade = (linha) => {
 // Rótulo do órgão que a descrição de um chip substitui. Aceita a forma com
 // dois pontos ("Bexiga: ...") e a forma corrida ("Bexiga urinária ..."),
 // pois a fraseologia do médico nem sempre repete os dois pontos.
-const rotuloDaDescricao = (descricao) => {
-  for (const r of ROTULOS_ORGAOS) {
+const rotuloDaDescricao = (descricao, rotulos = ROTULOS_ORGAOS) => {
+  for (const r of rotulos) {
     if (descricao.startsWith(r)) return r;
     if (descricao.startsWith(r.slice(0, -1) + " ")) return r;
   }
@@ -75,7 +75,7 @@ const rotuloDaDescricao = (descricao) => {
 // Divide a máscara em blocos: "orgao" (parágrafo descritivo iniciado por um
 // rótulo), "impressao" (do cabeçalho IMPRESSÃO/CONCLUSÃO até o fim) e
 // "outro" (título, linhas em branco e blocos de MEDIDAS, nunca alterados).
-function parsearMascara(texto) {
+function parsearMascara(texto, rotulos = ROTULOS_ORGAOS) {
   const blocos = [];
   let atual = null;
   let emImpressao = false;
@@ -93,7 +93,7 @@ function parsearMascara(texto) {
       abrir({ tipo: "impressao", linhas: [linha] });
       continue;
     }
-    const rotulo = rotuloDaLinha(linha);
+    const rotulo = rotuloDaLinha(linha, rotulos);
     if (rotulo) {
       abrir({ tipo: "orgao", rotulo, linhas: [linha] });
       continue;
@@ -111,8 +111,14 @@ function parsearMascara(texto) {
   return blocos;
 }
 
-export function montarLaudo(mascaraTexto, chipsSelecionados) {
-  const blocos = parsearMascara(mascaraTexto);
+// rotulosExtras: rótulos de órgão adicionais (ex.: parágrafos de um exame
+// customizado pelo médico, cujos nomes não estão no léxico fixo acima) —
+// só entram na busca de substituição desta chamada; ROTULOS_ORGAOS nunca é
+// alterado, então toda chamada existente sem esse 3º parâmetro continua
+// idêntica a antes.
+export function montarLaudo(mascaraTexto, chipsSelecionados, rotulosExtras = []) {
+  const rotulos = rotulosExtras.length ? [...ROTULOS_ORGAOS, ...rotulosExtras] : ROTULOS_ORGAOS;
+  const blocos = parsearMascara(mascaraTexto, rotulos);
   const temOrgao = (rotulo) => blocos.some((b) => b.tipo === "orgao" && b.rotulo === rotulo);
 
   const porOrgao = new Map(); // rotulo -> [descricoes na ordem de clique]
@@ -126,7 +132,7 @@ export function montarLaudo(mascaraTexto, chipsSelecionados) {
       anexosRins.push(descricao);
       continue;
     }
-    const rotulo = rotuloDaDescricao(descricao);
+    const rotulo = rotuloDaDescricao(descricao, rotulos);
     if (rotulo && temOrgao(rotulo)) {
       if (!porOrgao.has(rotulo)) porOrgao.set(rotulo, []);
       porOrgao.get(rotulo).push(descricao);
