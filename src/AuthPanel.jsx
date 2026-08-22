@@ -20,12 +20,12 @@ export default function AuthPanel({ usuario }) {
 
   if (usuario) {
     return (
-      <div className="flex items-center gap-2 text-xs text-slate-300">
-        <span className="w-2 h-2 rounded-full bg-emerald-400" title="Sincronizado na nuvem" />
+      <div className="flex items-center gap-2 text-xs text-[var(--c-slate-300)]">
+        <span className="w-2 h-2 rounded-full bg-[var(--c-emerald-400)]" title="Sincronizado na nuvem" />
         <span className="hidden sm:inline">{usuario.email}</span>
         <button
           onClick={() => sair()}
-          className="px-2 py-1 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200"
+          className="px-2 py-1 rounded-md bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-200)]"
         >
           Sair
         </button>
@@ -54,23 +54,23 @@ export default function AuthPanel({ usuario }) {
     <div className="relative">
       <button
         onClick={() => setAberto((v) => !v)}
-        className="flex items-center gap-2 px-2 py-1 rounded-md text-xs bg-slate-700 hover:bg-slate-600 text-slate-200"
+        className="flex items-center gap-2 px-2 py-1 rounded-md text-xs bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-200)]"
       >
-        <span className="w-2 h-2 rounded-full bg-slate-500" title="Salvando só neste navegador" />
+        <span className="w-2 h-2 rounded-full bg-[var(--c-slate-500)]" title="Salvando só neste navegador" />
         Entrar (backup na nuvem)
       </button>
       {aberto && (
-        <div className="absolute right-0 mt-1 w-64 bg-slate-800 border border-slate-600 rounded-lg shadow-lg p-3 z-20">
+        <div className="absolute right-0 mt-1 w-64 bg-[var(--c-slate-800)] border border-[var(--c-slate-600)] rounded-lg shadow-lg p-3 z-20">
           <div className="flex gap-1 mb-2 text-xs">
             <button
               onClick={() => setModo("entrar")}
-              className={"flex-1 py-1 rounded " + (modo === "entrar" ? "bg-sky-600 text-white" : "bg-slate-700 text-slate-300")}
+              className={"flex-1 py-1 rounded " + (modo === "entrar" ? "bg-[var(--c-accent-600)] text-white" : "bg-[var(--c-slate-700)] text-[var(--c-slate-300)]")}
             >
               Entrar
             </button>
             <button
               onClick={() => setModo("criar")}
-              className={"flex-1 py-1 rounded " + (modo === "criar" ? "bg-sky-600 text-white" : "bg-slate-700 text-slate-300")}
+              className={"flex-1 py-1 rounded " + (modo === "criar" ? "bg-[var(--c-accent-600)] text-white" : "bg-[var(--c-slate-700)] text-[var(--c-slate-300)]")}
             >
               Criar conta
             </button>
@@ -82,7 +82,7 @@ export default function AuthPanel({ usuario }) {
               placeholder="e-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-sky-400"
+              className="bg-[var(--c-slate-900)] border border-[var(--c-slate-600)] rounded px-2 py-1.5 text-sm text-[var(--c-slate-100)] outline-none focus:border-[var(--c-accent-400)]"
             />
             <input
               type="password"
@@ -91,13 +91,13 @@ export default function AuthPanel({ usuario }) {
               placeholder="senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-sky-400"
+              className="bg-[var(--c-slate-900)] border border-[var(--c-slate-600)] rounded px-2 py-1.5 text-sm text-[var(--c-slate-100)] outline-none focus:border-[var(--c-accent-400)]"
             />
-            {erro && <div className="text-xs text-red-400">{erro}</div>}
+            {erro && <div className="text-xs text-[var(--c-red-400)]">{erro}</div>}
             <button
               type="submit"
               disabled={carregando}
-              className="px-3 py-1.5 rounded-md text-sm bg-sky-600 hover:bg-sky-500 text-white disabled:opacity-50"
+              className="px-3 py-1.5 rounded-md text-sm bg-[var(--c-accent-600)] hover:bg-[var(--c-accent-500)] text-white disabled:opacity-50"
             >
               {carregando ? "Aguarde…" : modo === "criar" ? "Criar conta" : "Entrar"}
             </button>

@@ -15,14 +15,29 @@ import {
 // enquanto o médico não fornecer a máscara, este módulo monta apenas o
 // bloco de achados + a linha de classificação final.
 
-const rotuloSelect = "text-xs font-semibold text-slate-400 mb-1";
-const selectCls = "w-full bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-1.5 outline-none";
-const inputCls = "w-full bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-1.5 outline-none placeholder-slate-500";
+const rotuloSelect = "text-xs font-semibold text-[var(--c-slate-400)] mb-1";
+const selectCls = "w-full bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-1.5 outline-none";
+const inputCls = "w-full bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-1.5 outline-none placeholder-[var(--c-slate-500)]";
 const chipCls = (ativo) =>
   "px-2.5 py-1 rounded-full text-xs border transition " +
   (ativo
-    ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
-    : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600");
+    ? "bg-[var(--c-accent-500)] border-[var(--c-accent-400)] text-[var(--c-on-accent)] font-semibold"
+    : "bg-[var(--c-slate-700)] border-[var(--c-slate-600)] text-[var(--c-slate-200)] hover:bg-[var(--c-slate-600)]");
+
+// Botão genérico de nódulo padrão + par "Direita/Esquerda" que já entra com
+// o campo "Mama" preenchido — pedido do Dr. Ryan pra não precisar escolher
+// o lado toda vez; o campo "Mama" continua editável depois, pra corrigir.
+function BotoesNoduloPadrao({ rotulo, variante, aoAdicionar }) {
+  const clsGenerico = "px-2.5 py-1 rounded-full text-xs border border-[var(--c-accent-600)] text-[var(--c-accent-300)] hover:bg-[var(--c-accent-950)]";
+  const clsLado = "px-2 py-1 rounded-full text-xs border border-[var(--c-accent-600)] text-[var(--c-accent-300)] hover:bg-[var(--c-accent-950)]";
+  return (
+    <div className="flex items-center gap-1">
+      <button onClick={() => aoAdicionar(variante)} className={clsGenerico}>{rotulo}</button>
+      <button onClick={() => aoAdicionar(variante, "direita")} className={clsLado} title={`${rotulo} — mama direita, já selecionada`}>D</button>
+      <button onClick={() => aoAdicionar(variante, "esquerda")} className={clsLado} title={`${rotulo} — mama esquerda, já selecionada`}>E</button>
+    </div>
+  );
+}
 
 function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio, desabilitado, dica }) {
   return (
@@ -42,7 +57,7 @@ function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio, desabilitado, d
           </option>
         ))}
       </select>
-      {dica && <div className="text-[11px] text-amber-300 mt-0.5">{dica}</div>}
+      {dica && <div className="text-[11px] text-[var(--c-amber-300)] mt-0.5">{dica}</div>}
     </div>
   );
 }
@@ -84,8 +99,8 @@ export default function MamaBuilder({ aoAtualizar }) {
 
   // "3" é só o valor inicial de conveniência do primeiro Nódulo padrão —
   // se o médico já escolheu uma categoria, um novo nódulo não a sobrescreve.
-  const adicionarNoduloPadrao = (variante = "padrao") => {
-    setNodulosPadrao((prev) => [...prev, { ...NODULO_PADRAO_MAMA_VAZIO, variante }]);
+  const adicionarNoduloPadrao = (variante = "padrao", lado = "") => {
+    setNodulosPadrao((prev) => [...prev, { ...NODULO_PADRAO_MAMA_VAZIO, variante, lado }]);
     setCategoria((prev) => prev || "3");
   };
   const removerNoduloPadrao = (i) => setNodulosPadrao((prev) => prev.filter((_, j) => j !== i));
@@ -107,7 +122,7 @@ export default function MamaBuilder({ aoAtualizar }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-amber-900/40 border border-amber-700 rounded-lg p-3 text-xs text-amber-200 leading-relaxed">
+      <div className="bg-[var(--c-amber-900-40)] border border-[var(--c-amber-700)] rounded-lg p-3 text-xs text-[var(--c-amber-200)] leading-relaxed">
         A máscara de laudo normal de mama ainda não foi cadastrada em mascaras.js. O módulo monta os achados
         e a classificação; o laudo completo depende da máscara a ser fornecida pelo médico.
       </div>
@@ -118,8 +133,8 @@ export default function MamaBuilder({ aoAtualizar }) {
           do tecido fibroglandular) só se aplica quando o padrão não é
           adiposo. Percentuais aqui são só ajuda de interface — nunca vão
           para o texto do laudo, e o GTC nunca é usado para relacionar risco. */}
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
-        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Composição tecidual</div>
+      <div className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3 space-y-3">
+        <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">Composição tecidual</div>
         <div className="grid grid-cols-2 gap-2">
           <SelectGrupo
             titulo="Padrão tecidual / ecotextura de fundo"
@@ -158,8 +173,8 @@ export default function MamaBuilder({ aoAtualizar }) {
       {/* Bloco 3b: Cistos mamários — item separado do nódulo, duas opções
           mutuamente exclusivas. Convive com nódulo(s), sem categoria BI-RADS
           própria (cisto simples não é classificado). */}
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
-        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Cistos mamários (opcional)</div>
+      <div className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3 space-y-3">
+        <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">Cistos mamários (opcional)</div>
         <div className="flex flex-wrap gap-1.5">
           <button onClick={() => alternarModoCisto("unilateral")} className={chipCls(cistos.modo === "unilateral")}>
             Esparsos em uma mama
@@ -194,23 +209,17 @@ export default function MamaBuilder({ aoAtualizar }) {
 
       {/* Bloco 3a/5a-5c: Nódulo padrão e variantes — atalho para os casos
           banais, convive com o caminho detalhado abaixo (que fica intocado). */}
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
+      <div className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Nódulo padrão</div>
-          <div className="flex flex-wrap gap-1.5">
-            <button onClick={() => adicionarNoduloPadrao("padrao")} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
-              + Nódulo padrão
-            </button>
-            <button onClick={() => adicionarNoduloPadrao("ilhota_gordura")} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
-              + Ilhota de gordura
-            </button>
-            <button onClick={() => adicionarNoduloPadrao("cisto_espesso")} className="px-2.5 py-1 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">
-              + Cisto de conteúdo espesso
-            </button>
+          <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">Nódulo padrão</div>
+          <div className="flex flex-wrap gap-2">
+            <BotoesNoduloPadrao rotulo="+ Nódulo padrão" variante="padrao" aoAdicionar={adicionarNoduloPadrao} />
+            <BotoesNoduloPadrao rotulo="+ Ilhota de gordura" variante="ilhota_gordura" aoAdicionar={adicionarNoduloPadrao} />
+            <BotoesNoduloPadrao rotulo="+ Cisto de conteúdo espesso" variante="cisto_espesso" aoAdicionar={adicionarNoduloPadrao} />
           </div>
         </div>
         {nodulosPadrao.map((n, i) => (
-          <div key={i} className="border border-slate-700 rounded-md p-3 space-y-2" data-testid={`nodulo-padrao-mama-${i + 1}`}>
+          <div key={i} className="border border-[var(--c-slate-700)] rounded-md p-3 space-y-2" data-testid={`nodulo-padrao-mama-${i + 1}`}>
             <div className="flex items-center gap-2">
               <div className="text-sm font-semibold flex-1">
                 {n.variante === "ilhota_gordura" ? "Ilhota de gordura" : n.variante === "cisto_espesso" ? "Cisto de conteúdo espesso" : "Nódulo padrão"} {i + 1}
@@ -218,7 +227,7 @@ export default function MamaBuilder({ aoAtualizar }) {
               <button
                 onClick={() => removerNoduloPadrao(i)}
                 aria-label={`Remover nódulo padrão ${i + 1}`}
-                className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-slate-700 leading-none"
+                className="w-5 h-5 flex items-center justify-center rounded-full text-[var(--c-slate-400)] hover:text-white hover:bg-[var(--c-slate-700)] leading-none"
               >
                 ×
               </button>
@@ -258,8 +267,8 @@ export default function MamaBuilder({ aoAtualizar }) {
       {/* Bloco 3: categoria BI-RADS final — sempre manual, nunca calculada. */}
       <div
         className={
-          "bg-slate-800 rounded-lg border p-3 " +
-          (algumNoduloIncompativelCom3 ? "border-red-500" : "border-slate-700")
+          "bg-[var(--c-slate-800)] rounded-lg border p-3 " +
+          (algumNoduloIncompativelCom3 ? "border-[var(--c-red-500)]" : "border-[var(--c-slate-700)]")
         }
         data-testid="classificacao-final"
       >
@@ -272,8 +281,8 @@ export default function MamaBuilder({ aoAtualizar }) {
       </div>
 
       {/* Quantidade de nódulos */}
-      <div className="bg-slate-800 rounded-lg border border-slate-700 p-3">
-        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Nódulos (ACR BI-RADS)</div>
+      <div className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3">
+        <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide mb-2">Nódulos (ACR BI-RADS)</div>
         <div className="flex flex-wrap gap-1.5">
           <button onClick={() => definirQtd(0)} className={chipCls(nodules.length === 0)}>
             Sem nódulos
@@ -290,10 +299,10 @@ export default function MamaBuilder({ aoAtualizar }) {
       {nodules.map((n, i) => {
         const s = scoreFor(n);
         return (
-          <div key={i} className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-2" data-testid={`nodulo-mama-${i + 1}`}>
+          <div key={i} className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3 space-y-2" data-testid={`nodulo-mama-${i + 1}`}>
             <div className="flex items-center gap-2">
               <div className="text-sm font-semibold flex-1">N{i + 1}</div>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-slate-700 text-slate-200">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-[var(--c-slate-700)] text-[var(--c-slate-200)]">
                 {s.flags} suspeita{s.flags === 1 ? "" : "s"}
               </span>
             </div>
@@ -335,12 +344,12 @@ export default function MamaBuilder({ aoAtualizar }) {
                 <input value={n.m3} onChange={(e) => setNodField(i, "m3", e.target.value)} placeholder="1,0" className={inputCls} />
               </div>
             </div>
-            <div className="text-xs text-slate-400 leading-relaxed border-t border-slate-700 pt-2" data-testid={`suspeitas-${i + 1}`}>
+            <div className="text-xs text-[var(--c-slate-400)] leading-relaxed border-t border-[var(--c-slate-700)] pt-2" data-testid={`suspeitas-${i + 1}`}>
               {s.flags} característica{s.flags === 1 ? "" : "s"} suspeita{s.flags === 1 ? "" : "s"} (informativo — a
               categoria final é sempre escolhida pelo médico no campo "Classificação final" abaixo).
             </div>
             {categoria === "3" && !noduloCompativelComBirads3(n) && (
-              <div className="text-xs text-red-300 bg-red-950/40 border border-red-700 rounded-md p-2 leading-relaxed" data-testid={`aviso-birads3-${i + 1}`}>
+              <div className="text-xs text-[var(--c-red-300)] bg-[var(--c-red-950-40)] border border-[var(--c-red-700)] rounded-md p-2 leading-relaxed" data-testid={`aviso-birads3-${i + 1}`}>
                 <div>{AVISO_BIRADS3_LINHA1}</div>
                 <div>{AVISO_BIRADS3_LINHA2}</div>
               </div>

@@ -205,6 +205,74 @@ export default [
     ]
   },
   {
+    orgao: "Pâncreas",
+    itens: [
+      {
+        rotulo: "Parcialmente visualizado (cabeça/corpo)",
+        descricao: "Pâncreas: parcialmente visualizado em função de intensa interposição gasosa intestinal, sem anormalidades ao método nas porções caracterizadas (cabeça e parte do corpo).",
+        impressao: ""
+      },
+      {
+        rotulo: "Parcialmente visualizado (ducto normal)",
+        descricao: "Pâncreas: parcialmente visualizado em virtude de interposição gasosa gastrointestinal, estando suas porções passíveis de análise com textura, dimensões e contornos normais. Ducto pancreático com calibre habitual nas porções visualizadas.",
+        impressao: ""
+      },
+      {
+        rotulo: "Pâncreas lipomatoso",
+        descricao: "Pâncreas: de forma, contornos e dimensões preservadas, exibindo aumento difuso da sua ecogenicidade, achado compatível com substituição gordurosa / lipomatose.",
+        impressao: "Aumento da ecogenicidade pancreática, sugestivo de lipomatose."
+      }
+    ]
+  },
+  {
+    orgao: "Baço",
+    itens: [
+      {
+        rotulo: "Baço acessório",
+        requerInput: true,
+        campos: ["medidaX"],
+        descricao: "Baço: de dimensões e ecotextura normais, notando-se formação nodular sólida, de contornos bem definidos, isoecogênica ao parênquima esplênico, localizada inferomedialmente ao baço, medindo cm, compatível com baço acessório.",
+        impressao: "Formação nodular sugestiva de baço acessório (variante anatômica)."
+      },
+      {
+        rotulo: "Calcificação esplênica (Granulomas)",
+        descricao: "Baço: com dimensões conservadas, morfologia habitual e ecotextura homogênea, exceto por pequenos granulomas residuais calcificados esparsos pelo parênquima.",
+        impressao: "Pequenas calcificações no parênquima esplênico, de aspecto sequelar."
+      },
+      {
+        rotulo: "Cisto esplênico",
+        requerInput: true,
+        campos: ["medidaX"],
+        descricao: "Baço: de dimensões normais e ecotextura homogênea, exceto por formação anecoica, de paredes finas e regulares, com reforço acústico posterior, medindo cm.",
+        impressao: "Formação cística esplênica."
+      },
+      {
+        rotulo: "Esplenectomia pós-operatória",
+        descricao: "Baço: não caracterizado (status pós-operatório / esplenectomia).",
+        impressao: "Status pós-esplenectomia total."
+      },
+      {
+        rotulo: "Auto-esplenectomia",
+        descricao: "Baço: não caracterizado na loja esplênica, devendo-se considerar a hipótese de auto-esplenectomia no contexto clínico adequado.",
+        impressao: "Achado sugestivo de auto-esplenectomia."
+      },
+      {
+        rotulo: "Esplenectomia com Esplenose",
+        requerInput: true,
+        campos: ["medidaX"],
+        descricao: "Baço: não caracterizado (status pós-operatório). Notam-se na loja esplênica formações nodulares sólidas, de contornos arredondados, com ecotextura semelhante à esplênica, medindo até cm.",
+        impressao: "Status pós-esplenectomia, com nodulações na loja esplênica sugestivas de esplenose / remanescentes esplênicos."
+      },
+      {
+        rotulo: "Esplenomegalia (com medida)",
+        requerInput: true,
+        campos: ["medidaX"],
+        descricao: "Baço: de morfologia, contornos e ecotextura normais, com dimensões aumentadas, medindo cm em seu maior eixo longitudinal.",
+        impressao: "Esplenomegalia homogênea."
+      }
+    ]
+  },
+  {
     orgao: "Rins",
     itens: [
       {
@@ -307,74 +375,6 @@ export default [
         campos: ["lado", "terço", "medidaX"],
         descricao: "Rins: tópicos, apresentando no rim imagem nodular hiperecogênica, bem delimitada, homogênea, localizada no terço , medindo cm.",
         impressao: "Nódulo renal hiperecogênico no rim , altamente sugestivo de angiomiolipoma."
-      }
-    ]
-  },
-  {
-    orgao: "Pâncreas",
-    itens: [
-      {
-        rotulo: "Parcialmente visualizado (cabeça/corpo)",
-        descricao: "Pâncreas: parcialmente visualizado em função de intensa interposição gasosa intestinal, sem anormalidades ao método nas porções caracterizadas (cabeça e parte do corpo).",
-        impressao: ""
-      },
-      {
-        rotulo: "Parcialmente visualizado (ducto normal)",
-        descricao: "Pâncreas: parcialmente visualizado em virtude de interposição gasosa gastrointestinal, estando suas porções passíveis de análise com textura, dimensões e contornos normais. Ducto pancreático com calibre habitual nas porções visualizadas.",
-        impressao: ""
-      },
-      {
-        rotulo: "Pâncreas lipomatoso",
-        descricao: "Pâncreas: de forma, contornos e dimensões preservadas, exibindo aumento difuso da sua ecogenicidade, achado compatível com substituição gordurosa / lipomatose.",
-        impressao: "Aumento da ecogenicidade pancreática, sugestivo de lipomatose."
-      }
-    ]
-  },
-  {
-    orgao: "Baço",
-    itens: [
-      {
-        rotulo: "Baço acessório",
-        requerInput: true,
-        campos: ["medidaX"],
-        descricao: "Baço: de dimensões e ecotextura normais, notando-se formação nodular sólida, de contornos bem definidos, isoecogênica ao parênquima esplênico, localizada inferomedialmente ao baço, medindo cm, compatível com baço acessório.",
-        impressao: "Formação nodular sugestiva de baço acessório (variante anatômica)."
-      },
-      {
-        rotulo: "Calcificação esplênica (Granulomas)",
-        descricao: "Baço: com dimensões conservadas, morfologia habitual e ecotextura homogênea, exceto por pequenos granulomas residuais calcificados esparsos pelo parênquima.",
-        impressao: "Pequenas calcificações no parênquima esplênico, de aspecto sequelar."
-      },
-      {
-        rotulo: "Cisto esplênico",
-        requerInput: true,
-        campos: ["medidaX"],
-        descricao: "Baço: de dimensões normais e ecotextura homogênea, exceto por formação anecoica, de paredes finas e regulares, com reforço acústico posterior, medindo cm.",
-        impressao: "Formação cística esplênica."
-      },
-      {
-        rotulo: "Esplenectomia pós-operatória",
-        descricao: "Baço: não caracterizado (status pós-operatório / esplenectomia).",
-        impressao: "Status pós-esplenectomia total."
-      },
-      {
-        rotulo: "Auto-esplenectomia",
-        descricao: "Baço: não caracterizado na loja esplênica, devendo-se considerar a hipótese de auto-esplenectomia no contexto clínico adequado.",
-        impressao: "Achado sugestivo de auto-esplenectomia."
-      },
-      {
-        rotulo: "Esplenectomia com Esplenose",
-        requerInput: true,
-        campos: ["medidaX"],
-        descricao: "Baço: não caracterizado (status pós-operatório). Notam-se na loja esplênica formações nodulares sólidas, de contornos arredondados, com ecotextura semelhante à esplênica, medindo até cm.",
-        impressao: "Status pós-esplenectomia, com nodulações na loja esplênica sugestivas de esplenose / remanescentes esplênicos."
-      },
-      {
-        rotulo: "Esplenomegalia (com medida)",
-        requerInput: true,
-        campos: ["medidaX"],
-        descricao: "Baço: de morfologia, contornos e ecotextura normais, com dimensões aumentadas, medindo cm em seu maior eixo longitudinal.",
-        impressao: "Esplenomegalia homogênea."
       }
     ]
   },

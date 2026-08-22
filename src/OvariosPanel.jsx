@@ -11,9 +11,9 @@ import {
 // chamador (LaudoVozIA.jsx) via `aoMudar` — quem decide como isso vira
 // texto é src/ovarios.js (aplicarOvarios).
 
-const rotuloSelect = "text-xs font-semibold text-slate-400 mb-1";
-const selectCls = "w-full bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-1.5 outline-none";
-const inputCls = "w-full bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-1.5 outline-none placeholder-slate-500";
+const rotuloSelect = "text-xs font-semibold text-[var(--c-slate-400)] mb-1";
+const selectCls = "w-full bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-1.5 outline-none";
+const inputCls = "w-full bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-1.5 outline-none placeholder-[var(--c-slate-500)]";
 
 function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio }) {
   return (
@@ -31,10 +31,10 @@ function SelectGrupo({ titulo, opcoes, valor, aoMudar, semVazio }) {
 
 function PainelLesao({ lesao, setCampo, remover, testId }) {
   return (
-    <div className="border border-slate-600 rounded-md p-2 space-y-2 bg-slate-900/40" data-testid={testId}>
+    <div className="border border-[var(--c-slate-600)] rounded-md p-2 space-y-2 bg-[var(--c-slate-900-40)]" data-testid={testId}>
       <div className="flex items-center gap-2">
-        <div className="text-xs font-semibold text-slate-300 flex-1">Lesão</div>
-        <button onClick={remover} aria-label="Remover lesão" className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-slate-700 leading-none">×</button>
+        <div className="text-xs font-semibold text-[var(--c-slate-300)] flex-1">Lesão</div>
+        <button onClick={remover} aria-label="Remover lesão" className="w-5 h-5 flex items-center justify-center rounded-full text-[var(--c-slate-400)] hover:text-white hover:bg-[var(--c-slate-700)] leading-none">×</button>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <SelectGrupo semVazio titulo="Loculação (A)" opcoes={LOCULACAO} valor={lesao.loculacao}
@@ -67,8 +67,8 @@ function PainelLesao({ lesao, setCampo, remover, testId }) {
           <input value={lesao.m3} onChange={(e) => setCampo("m3", e.target.value)} placeholder="2,0" inputMode="decimal" className={inputCls} />
         </div>
       </div>
-      <label className="flex items-center gap-2 text-xs cursor-pointer text-slate-300">
-        <input type="checkbox" checked={!!lesao.doppler} onChange={(e) => setCampo("doppler", e.target.checked ? "sem" : "")} className="w-3.5 h-3.5 accent-sky-500" />
+      <label className="flex items-center gap-2 text-xs cursor-pointer text-[var(--c-slate-300)]">
+        <input type="checkbox" checked={!!lesao.doppler} onChange={(e) => setCampo("doppler", e.target.checked ? "sem" : "")} className="w-3.5 h-3.5 accent-[var(--c-accent-500)]" />
         Avaliada ao Doppler
       </label>
       {lesao.doppler && (
@@ -88,7 +88,7 @@ function PainelLado({ titulo, o, setCampo, testId }) {
     setCampo("lesoes", o.lesoes.map((l, j) => (j === i ? { ...l, [chave]: valor } : l)));
 
   return (
-    <div className="border border-slate-700 rounded-md p-3 space-y-2" data-testid={testId}>
+    <div className="border border-[var(--c-slate-700)] rounded-md p-3 space-y-2" data-testid={testId}>
       <div className="text-sm font-semibold">{titulo}</div>
       <SelectGrupo semVazio titulo="Estado" opcoes={ESTADOS_OVARIO} valor={o.estado} aoMudar={(v) => setCampo("estado", v || "normal")} />
       {!suprimido && (
@@ -109,8 +109,8 @@ function PainelLado({ titulo, o, setCampo, testId }) {
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Lesões (O-RADS)</div>
-              <button onClick={adicionarLesao} className="px-2 py-0.5 rounded-full text-xs border border-sky-600 text-sky-300 hover:bg-sky-950">+ lesão</button>
+              <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">Lesões (O-RADS)</div>
+              <button onClick={adicionarLesao} className="px-2 py-0.5 rounded-full text-xs border border-[var(--c-accent-600)] text-[var(--c-accent-300)] hover:bg-[var(--c-accent-950)]">+ lesão</button>
             </div>
             {(o.lesoes || []).map((lesao, i) => (
               <PainelLesao
@@ -139,18 +139,18 @@ export default function OvariosPanel({ aoMudar }) {
   }, [direito, esquerdo, oradsAtivo, oradsValor, aoMudar]);
 
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
-      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Ovários (direito e esquerdo)</div>
+    <div className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3 space-y-3">
+      <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">Ovários (direito e esquerdo)</div>
       <PainelLado titulo="Ovário direito" o={direito} setCampo={(k, v) => setDireito((p) => ({ ...p, [k]: v }))} testId="ovario-direito" />
       <PainelLado titulo="Ovário esquerdo" o={esquerdo} setCampo={(k, v) => setEsquerdo((p) => ({ ...p, [k]: v }))} testId="ovario-esquerdo" />
 
       {/* Classificação O-RADS: opcional, desligada por padrão, nunca sugerida
           — abre vazia, o médico escolhe (0-5). Só entra no texto no final do
           laudo, nunca na impressão. */}
-      <div className="border-t border-slate-700 pt-2 space-y-2">
+      <div className="border-t border-[var(--c-slate-700)] pt-2 space-y-2">
         <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" checked={oradsAtivo} onChange={(e) => { setOradsAtivo(e.target.checked); if (!e.target.checked) setOradsValor(""); }} className="w-4 h-4 accent-sky-500" />
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Classificação O-RADS (opcional)</span>
+          <input type="checkbox" checked={oradsAtivo} onChange={(e) => { setOradsAtivo(e.target.checked); if (!e.target.checked) setOradsValor(""); }} className="w-4 h-4 accent-[var(--c-accent-500)]" />
+          <span className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">Classificação O-RADS (opcional)</span>
         </label>
         {oradsAtivo && (
           <SelectGrupo

@@ -102,7 +102,7 @@ function CamposMedidaChip({ item, valores, aoMudar }) {
           onChange={(e) => aoMudar(i, e.target.value)}
           placeholder={unidade}
           aria-label={`Medida ${i + 1} (${unidade}) de ${item.rotulo}`}
-          className="w-14 bg-slate-900 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-100 outline-none focus:border-sky-400"
+          className="w-14 bg-[var(--c-slate-900)] border border-[var(--c-slate-600)] rounded px-1.5 py-0.5 text-xs text-[var(--c-slate-100)] outline-none focus:border-[var(--c-accent-400)]"
         />
       ))}
     </div>
@@ -119,7 +119,7 @@ function CampoSegmentoChip({ item, valor, aoMudar }) {
         value={valor || ""}
         onChange={(e) => aoMudar(e.target.value)}
         aria-label={`Segmento hepático de ${item.rotulo}`}
-        className="bg-slate-900 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-100 outline-none focus:border-sky-400"
+        className="bg-[var(--c-slate-900)] border border-[var(--c-slate-600)] rounded px-1.5 py-0.5 text-xs text-[var(--c-slate-100)] outline-none focus:border-[var(--c-accent-400)]"
       >
         <option value="">segmento</option>
         {SEGMENTOS_HEPATICOS.map((s) => (
@@ -139,7 +139,7 @@ function CampoLadoChip({ item, valor, aoMudar }) {
         value={valor || ""}
         onChange={(e) => aoMudar(e.target.value)}
         aria-label={`Lado de ${item.rotulo}`}
-        className="bg-slate-900 border border-slate-600 rounded px-1.5 py-0.5 text-xs text-slate-100 outline-none focus:border-sky-400"
+        className="bg-[var(--c-slate-900)] border border-[var(--c-slate-600)] rounded px-1.5 py-0.5 text-xs text-[var(--c-slate-100)] outline-none focus:border-[var(--c-accent-400)]"
       >
         <option value="">lado</option>
         <option value="direito">Direito</option>
@@ -151,12 +151,12 @@ function CampoLadoChip({ item, valor, aoMudar }) {
 
 function BarraFormatacao({ aoFormatar, aoAumentar, aoDiminuir }) {
   return (
-    <div className="px-3 py-1.5 border-b border-slate-700 flex items-center gap-1 bg-slate-800/60">
+    <div className="px-3 py-1.5 border-b border-[var(--c-slate-700)] flex items-center gap-1 bg-[var(--c-slate-800-60)]">
       <button
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => aoFormatar("bold")}
         title="Negrito"
-        className="w-7 h-7 rounded text-sm font-bold bg-slate-700 hover:bg-slate-600 text-slate-100"
+        className="w-7 h-7 rounded text-sm font-bold bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-100)]"
       >
         B
       </button>
@@ -164,22 +164,22 @@ function BarraFormatacao({ aoFormatar, aoAumentar, aoDiminuir }) {
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => aoFormatar("italic")}
         title="Itálico"
-        className="w-7 h-7 rounded text-sm italic bg-slate-700 hover:bg-slate-600 text-slate-100"
+        className="w-7 h-7 rounded text-sm italic bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-100)]"
       >
         I
       </button>
-      <span className="w-px h-4 bg-slate-600 mx-1" />
+      <span className="w-px h-4 bg-[var(--c-slate-600)] mx-1" />
       <button
         onClick={aoAumentar}
         title="Aumentar fonte"
-        className="px-2 h-7 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-100"
+        className="px-2 h-7 rounded text-xs font-semibold bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-100)]"
       >
         A+
       </button>
       <button
         onClick={aoDiminuir}
         title="Diminuir fonte"
-        className="px-2 h-7 rounded text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-100"
+        className="px-2 h-7 rounded text-xs font-semibold bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-100)]"
       >
         A−
       </button>
@@ -237,6 +237,19 @@ export default function LaudoVozIA() {
     ).length;
   // ---- Fase 2: nuvem (Firebase) — login e máscaras/alterações customizadas.
   // Sem login, tudo isso continua 100% local (localStorage), como sempre.
+  // Tema claro/escuro — persistido no navegador, aplicado via atributo
+  // data-theme na <html> (ver src/index.css). Escuro é o padrão (o que já
+  // existia); o destaque nele passou de azul pra laranja, que perde menos
+  // luminância numa sala de ultrassom escurecida.
+  const [tema, setTema] = useState(() => {
+    try { return localStorage.getItem("laudovoz_tema") || "dark"; } catch (e) { return "dark"; }
+  });
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", tema);
+    try { localStorage.setItem("laudovoz_tema", tema); } catch (e) {}
+  }, [tema]);
+  const alternarTema = () => setTema((t) => (t === "dark" ? "light" : "dark"));
+
   const [usuario, setUsuario] = useState(null);
   const [mascarasNuvem, setMascarasNuvem] = useState({}); // id -> {nome?, texto, customizada?}
   const [alteracoesNuvem, setAlteracoesNuvem] = useState([]);
@@ -915,25 +928,32 @@ export default function LaudoVozIA() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-200 flex flex-col font-sans">
+    <div className="min-h-screen bg-[var(--c-slate-900)] text-[var(--c-slate-200)] flex flex-col font-sans">
       {/* Cabeçalho */}
-      <header className="px-4 py-3 border-b border-slate-700 bg-slate-800 flex items-center gap-3 flex-wrap">
+      <header className="px-4 py-3 border-b border-[var(--c-slate-700)] bg-[var(--c-slate-800)] flex items-center gap-3 flex-wrap">
         <h1 className="text-base font-semibold tracking-wide">LaudoVoz IA</h1>
-        <span className="text-xs text-slate-400">protótipo v0.2 · montar por cliques ou ditado + IA</span>
-        <div className="ml-auto">
+        <span className="text-xs text-[var(--c-slate-400)]">protótipo v0.2 · montar por cliques ou ditado + IA</span>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={alternarTema}
+            title={tema === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+            className="px-2 py-1 rounded-md text-xs bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-200)]"
+          >
+            {tema === "dark" ? "☀️ Claro" : "🌙 Escuro"}
+          </button>
           <AuthPanel usuario={usuario} />
         </div>
       </header>
 
       {/* Abas de modo */}
-      <div className="flex border-b border-slate-700 bg-slate-800">
+      <div className="flex border-b border-[var(--c-slate-700)] bg-[var(--c-slate-800)]">
         <button
           onClick={() => setModo("cliques")}
           className={
             "px-6 py-3 text-sm font-bold transition border-b-2 " +
             (modo === "cliques"
-              ? "text-sky-400 border-sky-400"
-              : "text-slate-400 border-transparent hover:text-slate-200")
+              ? "text-[var(--c-accent-400)] border-[var(--c-accent-400)]"
+              : "text-[var(--c-slate-400)] border-transparent hover:text-[var(--c-slate-200)]")
           }
         >
           Montar por cliques
@@ -943,8 +963,8 @@ export default function LaudoVozIA() {
           className={
             "px-6 py-3 text-sm font-bold transition border-b-2 " +
             (modo === "ia"
-              ? "text-sky-400 border-sky-400"
-              : "text-slate-400 border-transparent hover:text-slate-200")
+              ? "text-[var(--c-accent-400)] border-[var(--c-accent-400)]"
+              : "text-[var(--c-slate-400)] border-transparent hover:text-[var(--c-slate-200)]")
           }
         >
           Ditado + IA
@@ -952,7 +972,7 @@ export default function LaudoVozIA() {
       </div>
 
       {erro && (
-        <div className="mx-4 mt-3 px-3 py-2 rounded-md border border-red-500 text-red-300 text-sm">
+        <div className="mx-4 mt-3 px-3 py-2 rounded-md border border-[var(--c-red-500)] text-[var(--c-red-300)] text-sm">
           {erro}
         </div>
       )}
@@ -961,13 +981,13 @@ export default function LaudoVozIA() {
       <div className={modo === "cliques" ? "flex-1 flex flex-col lg:flex-row gap-4 p-4" : "hidden"}>
         {/* Coluna esquerda: exame + alterações */}
         <section className="lg:w-2/5 flex flex-col gap-4">
-          <div className="bg-slate-800 rounded-lg border border-slate-700 px-3 py-2 flex items-center gap-2">
+          <div className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] px-3 py-2 flex items-center gap-2">
             <label htmlFor="exame-cliques" className="text-sm font-semibold">Exame</label>
             <select
               id="exame-cliques"
               value={cliquesExameId}
               onChange={(e) => trocarExameCliques(e.target.value)}
-              className="flex-1 bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-2 outline-none"
+              className="flex-1 bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-2 outline-none"
             >
               {EXAMES_CLIQUES.map((id) => (
                 <option key={id} value={id}>{nomeExameCliques(id)}</option>
@@ -983,39 +1003,39 @@ export default function LaudoVozIA() {
               <MamaBuilder aoAtualizar={aoAtualizarBuilder} />
             </div>
           ) : (
-            <div className="flex-1 bg-slate-800 rounded-lg border border-slate-700 p-3 overflow-y-auto min-h-48">
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+            <div className="flex-1 bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3 overflow-y-auto min-h-48">
+              <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide mb-2">
                 Alterações
               </div>
-              {cliquesExameId === "transvaginal" && (
-                <div className="mb-3">
-                  <OvariosPanel aoMudar={aoMudarOvarios} />
-                </div>
-              )}
-              {(cliquesExameId === "abdome_total" || cliquesExameId === "vias_urinarias") && (
-                <div className="mb-3">
-                  <RinsPanel aoMudar={aoMudarRins} />
-                </div>
-              )}
               {(alteracoesAtivas(cliquesExameId) || []).filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).length === 0 ? (
-                <div className="text-sm text-slate-500">
+                <div className="text-sm text-[var(--c-slate-500)]">
                   Sem alterações cadastradas para este exame. Você pode editar o laudo diretamente no editor ao lado.
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {/* Ovários/Rins por lado entram na posição que a máscara mostra
+                      (Ovários depois de Endométrio; Rins depois de Baço), não
+                      soltos no topo — âncora no grupo que aparece logo depois
+                      na ordem real do laudo (ver reordenação em abdome_total.js). */}
                   {alteracoesAtivas(cliquesExameId).filter((g) => !(g.orgao === "Ovários" && cliquesExameId === "transvaginal")).map((grupo) => {
                     const colapsado = !!gruposColapsados[grupo.orgao];
                     const contagem = contarAtivosNoGrupo(grupo, cliquesChips);
                     return (
                     <div key={grupo.orgao}>
+                      {(cliquesExameId === "abdome_total" || cliquesExameId === "vias_urinarias") && grupo.orgao === "Rins" && (
+                        <div className="mb-3"><RinsPanel aoMudar={aoMudarRins} /></div>
+                      )}
+                      {cliquesExameId === "transvaginal" && grupo.orgao === "Ovários - Lesões e Massas (O-RADS)" && (
+                        <div className="mb-3"><OvariosPanel aoMudar={aoMudarOvarios} /></div>
+                      )}
                       <button
                         onClick={() => alternarGrupoColapsado(grupo.orgao)}
-                        className="w-full flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1 hover:text-slate-200"
+                        className="w-full flex items-center gap-1.5 text-xs font-semibold text-[var(--c-slate-400)] mb-1 hover:text-[var(--c-slate-200)]"
                       >
                         <span className="inline-block w-3 text-[10px]">{colapsado ? "▸" : "▾"}</span>
                         <span>{grupo.orgao}</span>
                         {contagem > 0 && (
-                          <span className="px-1.5 rounded-full bg-sky-900/60 border border-sky-700 text-sky-300 text-[10px] font-normal">
+                          <span className="px-1.5 rounded-full bg-[var(--c-accent-900-60)] border border-[var(--c-accent-700)] text-[var(--c-accent-300)] text-[10px] font-normal">
                             {contagem}
                           </span>
                         )}
@@ -1034,8 +1054,8 @@ export default function LaudoVozIA() {
                                 className={
                                   "px-2.5 py-1 rounded-full text-xs border transition " +
                                   (selecionado
-                                    ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
-                                    : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
+                                    ? "bg-[var(--c-accent-500)] border-[var(--c-accent-400)] text-[var(--c-on-accent)] font-semibold"
+                                    : "bg-[var(--c-slate-700)] border-[var(--c-slate-600)] text-[var(--c-slate-200)] hover:bg-[var(--c-slate-600)]")
                                 }
                               >
                                 {selecionado ? "✓ " : ""}{item.rotulo}
@@ -1044,7 +1064,7 @@ export default function LaudoVozIA() {
                                 <button
                                   onClick={(e) => { e.stopPropagation(); excluirAlteracaoCustom(item._customId); }}
                                   title="Excluir esta alteração customizada"
-                                  className="text-[10px] text-slate-500 hover:text-red-400 mt-0.5"
+                                  className="text-[10px] text-[var(--c-slate-500)] hover:text-[var(--c-red-400)] mt-0.5"
                                 >
                                   excluir
                                 </button>
@@ -1090,17 +1110,17 @@ export default function LaudoVozIA() {
         </section>
 
         {/* Coluna direita: editor do laudo */}
-        <section className="lg:w-3/5 flex flex-col bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-          <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2 flex-wrap">
+        <section className="lg:w-3/5 flex flex-col bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] overflow-hidden">
+          <div className="px-3 py-2 border-b border-[var(--c-slate-700)] flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold flex-1">Laudo</h2>
             {cliquesEdicaoManual && (
               <>
-                <span className="px-2 py-0.5 rounded-full text-[11px] bg-amber-900/60 border border-amber-600 text-amber-300">
+                <span className="px-2 py-0.5 rounded-full text-[11px] bg-[var(--c-amber-900-60)] border border-[var(--c-amber-600)] text-[var(--c-amber-300)]">
                   Edição manual ativa
                 </span>
                 <button
                   onClick={remontarCliques}
-                  className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600"
+                  className="px-3 py-2 rounded-md text-sm bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)]"
                 >
                   Remontar
                 </button>
@@ -1108,7 +1128,7 @@ export default function LaudoVozIA() {
             )}
             <button
               onClick={() => copiarEditor(cliquesEditorRef)}
-              className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600"
+              className="px-3 py-2 rounded-md text-sm bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)]"
             >
               Copiar
             </button>
@@ -1132,15 +1152,15 @@ export default function LaudoVozIA() {
       {/* ===================== MODO DITADO + IA ===================== */}
       <div className={modo === "ia" ? "flex-1 flex flex-col lg:flex-row gap-4 p-4" : "hidden"}>
         {/* Painel de entrada */}
-        <section className="flex-1 flex flex-col bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-          <div className="flex border-b border-slate-700">
+        <section className="flex-1 flex flex-col bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] overflow-hidden">
+          <div className="flex border-b border-[var(--c-slate-700)]">
             <button
               onClick={() => setAbaEntrada("ditado")}
               className={
                 "flex-1 px-3 py-2 text-sm font-semibold transition " +
                 (abaEntrada === "ditado"
-                  ? "bg-slate-800 text-sky-400"
-                  : "bg-slate-900/40 text-slate-400 hover:text-slate-200")
+                  ? "bg-[var(--c-slate-800)] text-[var(--c-accent-400)]"
+                  : "bg-[var(--c-slate-900-40)] text-[var(--c-slate-400)] hover:text-[var(--c-slate-200)]")
               }
             >
               Ditado
@@ -1150,8 +1170,8 @@ export default function LaudoVozIA() {
               className={
                 "flex-1 px-3 py-2 text-sm font-semibold transition " +
                 (abaEntrada === "mascara"
-                  ? "bg-slate-800 text-sky-400"
-                  : "bg-slate-900/40 text-slate-400 hover:text-slate-200")
+                  ? "bg-[var(--c-slate-800)] text-[var(--c-accent-400)]"
+                  : "bg-[var(--c-slate-900-40)] text-[var(--c-slate-400)] hover:text-[var(--c-slate-200)]")
               }
             >
               Máscara
@@ -1160,7 +1180,7 @@ export default function LaudoVozIA() {
 
           {abaEntrada === "ditado" && (
             <>
-              <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2 flex-wrap">
+              <div className="px-3 py-2 border-b border-[var(--c-slate-700)] flex items-center gap-2 flex-wrap">
                 <h2 className="text-sm font-semibold flex-1">Transcrição do ditado</h2>
                 <button
                   onClick={toggleMic}
@@ -1168,14 +1188,14 @@ export default function LaudoVozIA() {
                   className={
                     "px-4 py-2 rounded-full text-sm font-semibold transition flex items-center gap-2 disabled:opacity-50 " +
                     (listening
-                      ? "bg-red-600 text-white"
-                      : "bg-slate-700 hover:bg-slate-600 text-slate-100")
+                      ? "bg-[var(--c-red-600)] text-white"
+                      : "bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-100)]")
                   }
                 >
                   {listening && (
                     <span className="relative flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-100" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--c-red-300)] opacity-75" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--c-red-100)]" />
                     </span>
                   )}
                   {listening ? "Gravando… (parar)" : "Ditar"}
@@ -1187,14 +1207,14 @@ export default function LaudoVozIA() {
                   className={
                     "px-4 py-2 rounded-full text-sm font-semibold transition flex items-center gap-2 disabled:opacity-50 " +
                     (gravandoWhisper
-                      ? "bg-red-600 text-white"
-                      : "bg-slate-700 hover:bg-slate-600 text-slate-100")
+                      ? "bg-[var(--c-red-600)] text-white"
+                      : "bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-slate-100)]")
                   }
                 >
                   {gravandoWhisper && (
                     <span className="relative flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-300 opacity-75" />
-                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-100" />
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--c-red-300)] opacity-75" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[var(--c-red-100)]" />
                     </span>
                   )}
                   {gravandoWhisper ? "Gravando… (parar)" : transcrevendoWhisper ? "Transcrevendo…" : "Gravar (Whisper)"}
@@ -1202,13 +1222,13 @@ export default function LaudoVozIA() {
                 <button
                   onClick={() => { setTranscript(""); setInterim(""); setAlteracoesSelecionadas([]); }}
                   disabled={busy}
-                  className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600 text-red-300 disabled:opacity-50"
+                  className="px-3 py-2 rounded-md text-sm bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] text-[var(--c-red-300)] disabled:opacity-50"
                 >
                   Limpar
                 </button>
               </div>
               {transcrevendoWhisper && (
-                <div className="px-3 py-1 text-sky-400 text-sm border-b border-slate-700">
+                <div className="px-3 py-1 text-[var(--c-accent-400)] text-sm border-b border-[var(--c-slate-700)]">
                   Transcrevendo áudio com Whisper…
                 </div>
               )}
@@ -1217,21 +1237,21 @@ export default function LaudoVozIA() {
                   value={transcript}
                   onChange={(e) => setTranscript(e.target.value)}
                   placeholder="Toque em Ditar e fale os achados ou cole a transcrição aqui. Você pode editar livremente antes de gerar o laudo."
-                  className="flex-1 bg-slate-800 text-slate-100 p-3 pb-9 text-sm leading-relaxed resize-none outline-none placeholder-slate-500"
+                  className="flex-1 bg-[var(--c-slate-800)] text-[var(--c-slate-100)] p-3 pb-9 text-sm leading-relaxed resize-none outline-none placeholder-[var(--c-slate-500)]"
                 />
                 {listening && interim && (
-                  <div className="absolute bottom-0 left-0 right-0 px-3 py-1.5 text-slate-400 text-sm italic bg-slate-800/95 border-t border-slate-700 pointer-events-none">
+                  <div className="absolute bottom-0 left-0 right-0 px-3 py-1.5 text-[var(--c-slate-400)] text-sm italic bg-[var(--c-slate-800-95)] border-t border-[var(--c-slate-700)] pointer-events-none">
                     {interim}
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-slate-700 flex flex-col max-h-56 overflow-y-auto">
-                <div className="px-3 pt-2 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              <div className="border-t border-[var(--c-slate-700)] flex flex-col max-h-56 overflow-y-auto">
+                <div className="px-3 pt-2 text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">
                   Alterações rápidas
                 </div>
                 {(alteracoesAtivas(mascaraId) || []).length === 0 ? (
-                  <div className="px-3 pb-3 pt-1 text-sm text-slate-500">
+                  <div className="px-3 pb-3 pt-1 text-sm text-[var(--c-slate-500)]">
                     Sem alterações cadastradas para este exame.
                   </div>
                 ) : (
@@ -1243,12 +1263,12 @@ export default function LaudoVozIA() {
                       <div key={grupo.orgao}>
                         <button
                           onClick={() => alternarGrupoColapsado(grupo.orgao)}
-                          className="w-full flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-1 hover:text-slate-200"
+                          className="w-full flex items-center gap-1.5 text-xs font-semibold text-[var(--c-slate-400)] mb-1 hover:text-[var(--c-slate-200)]"
                         >
                           <span className="inline-block w-3 text-[10px]">{colapsado ? "▸" : "▾"}</span>
                           <span>{grupo.orgao}</span>
                           {contagem > 0 && (
-                            <span className="px-1.5 rounded-full bg-sky-900/60 border border-sky-700 text-sky-300 text-[10px] font-normal">
+                            <span className="px-1.5 rounded-full bg-[var(--c-accent-900-60)] border border-[var(--c-accent-700)] text-[var(--c-accent-300)] text-[10px] font-normal">
                               {contagem}
                             </span>
                           )}
@@ -1267,8 +1287,8 @@ export default function LaudoVozIA() {
                                   className={
                                     "px-2.5 py-1 rounded-full text-xs border transition " +
                                     (selecionado
-                                      ? "bg-sky-500 border-sky-400 text-slate-900 font-semibold"
-                                      : "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600")
+                                      ? "bg-[var(--c-accent-500)] border-[var(--c-accent-400)] text-[var(--c-on-accent)] font-semibold"
+                                      : "bg-[var(--c-slate-700)] border-[var(--c-slate-600)] text-[var(--c-slate-200)] hover:bg-[var(--c-slate-600)]")
                                   }
                                 >
                                   {item.rotulo}
@@ -1277,7 +1297,7 @@ export default function LaudoVozIA() {
                                   <button
                                     onClick={(e) => { e.stopPropagation(); excluirAlteracaoCustom(item._customId); }}
                                     title="Excluir esta alteração customizada"
-                                    className="text-[10px] text-slate-500 hover:text-red-400 mt-0.5"
+                                    className="text-[10px] text-[var(--c-slate-500)] hover:text-[var(--c-red-400)] mt-0.5"
                                   >
                                     excluir
                                   </button>
@@ -1321,19 +1341,19 @@ export default function LaudoVozIA() {
                   />
                 </div>
                 {alteracoesSelecionadas.length > 0 && (
-                  <div className="px-3 pb-3 pt-2 border-t border-slate-700">
-                    <div className="text-xs font-semibold text-slate-400 mb-1">Selecionadas:</div>
+                  <div className="px-3 pb-3 pt-2 border-t border-[var(--c-slate-700)]">
+                    <div className="text-xs font-semibold text-[var(--c-slate-400)] mb-1">Selecionadas:</div>
                     <div className="flex flex-wrap gap-1.5">
                       {alteracoesSelecionadas.map((a) => (
                         <span
                           key={chaveAlteracao(a.orgao, a.rotulo)}
-                          className="flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full text-xs bg-sky-950 border border-sky-700 text-sky-200"
+                          className="flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full text-xs bg-[var(--c-accent-950)] border border-[var(--c-accent-700)] text-[var(--c-accent-200)]"
                         >
                           {a.rotulo}
                           <button
                             onClick={() => removerAlteracao(a.orgao, a.rotulo)}
                             aria-label={`Remover ${a.rotulo}`}
-                            className="w-4 h-4 flex items-center justify-center rounded-full text-sky-300 hover:text-white hover:bg-sky-800 leading-none"
+                            className="w-4 h-4 flex items-center justify-center rounded-full text-[var(--c-accent-300)] hover:text-white hover:bg-[var(--c-accent-800)] leading-none"
                           >
                             ×
                           </button>
@@ -1348,12 +1368,12 @@ export default function LaudoVozIA() {
 
           {abaEntrada === "mascara" && (
             <>
-              <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2 flex-wrap">
+              <div className="px-3 py-2 border-b border-[var(--c-slate-700)] flex items-center gap-2 flex-wrap">
                 <h2 className="text-sm font-semibold flex-1">Máscara do exame</h2>
                 <select
                   value={mascaraId}
                   onChange={(e) => selecionarMascara(e.target.value)}
-                  className="bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-2 outline-none"
+                  className="bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-2 outline-none"
                 >
                   {[...IDS_MASCARAS, ...idsMascarasCustom].map((id) => (
                     <option key={id} value={id}>{nomeExameCliques(id)}</option>
@@ -1362,38 +1382,38 @@ export default function LaudoVozIA() {
                 {MASCARAS[mascaraId] ? (
                   <button
                     onClick={restaurarMascaraPadrao}
-                    className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600"
+                    className="px-3 py-2 rounded-md text-sm bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)]"
                   >
                     Restaurar padrão
                   </button>
                 ) : (
                   <button
                     onClick={excluirExameAtual}
-                    className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-red-900 text-red-300"
+                    className="px-3 py-2 rounded-md text-sm bg-[var(--c-slate-700)] hover:bg-[var(--c-red-900)] text-[var(--c-red-300)]"
                   >
                     Excluir exame
                   </button>
                 )}
                 <button
                   onClick={() => setCriandoExame((v) => !v)}
-                  className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600"
+                  className="px-3 py-2 rounded-md text-sm bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)]"
                 >
                   + Novo exame
                 </button>
               </div>
               {criandoExame && (
-                <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2">
+                <div className="px-3 py-2 border-b border-[var(--c-slate-700)] flex items-center gap-2">
                   <input
                     autoFocus
                     placeholder="Nome do exame novo (ex.: USG Partes Moles)"
                     value={nomeNovoExame}
                     onChange={(e) => setNomeNovoExame(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && criarNovoExame()}
-                    className="flex-1 bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-sky-400"
+                    className="flex-1 bg-[var(--c-slate-900)] border border-[var(--c-slate-600)] rounded px-2 py-1.5 text-sm text-[var(--c-slate-100)] outline-none focus:border-[var(--c-accent-400)]"
                   />
                   <button
                     onClick={criarNovoExame}
-                    className="px-3 py-1.5 rounded-md text-sm bg-sky-600 hover:bg-sky-500 text-white"
+                    className="px-3 py-1.5 rounded-md text-sm bg-[var(--c-accent-600)] hover:bg-[var(--c-accent-500)] text-white"
                   >
                     Criar
                   </button>
@@ -1403,27 +1423,27 @@ export default function LaudoVozIA() {
                 value={mascaraTexto}
                 onChange={(e) => editarMascaraTexto(e.target.value)}
                 placeholder={MASCARAS[mascaraId] ? "" : "Escreva ou cole aqui o laudo normal completo deste exame."}
-                className="flex-1 min-h-48 bg-slate-800 text-slate-100 p-3 text-sm leading-relaxed resize-none outline-none font-mono"
+                className="flex-1 min-h-48 bg-[var(--c-slate-800)] text-[var(--c-slate-100)] p-3 text-sm leading-relaxed resize-none outline-none font-mono"
               />
             </>
           )}
         </section>
 
         {/* Painel do laudo */}
-        <section className="flex-1 flex flex-col bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-          <div className="px-3 py-2 border-b border-slate-700 flex items-center gap-2 flex-wrap">
+        <section className="flex-1 flex flex-col bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] overflow-hidden">
+          <div className="px-3 py-2 border-b border-[var(--c-slate-700)] flex items-center gap-2 flex-wrap">
             <h2 className="text-sm font-semibold flex-1">Laudo estruturado</h2>
             <button
               onClick={gerarLaudo}
               disabled={busy || (!transcript.trim() && alteracoesSelecionadas.length === 0)}
-              className="px-4 py-2 rounded-md text-sm font-semibold bg-sky-500 hover:bg-sky-400 text-slate-900 disabled:opacity-50"
+              className="px-4 py-2 rounded-md text-sm font-semibold bg-[var(--c-accent-500)] hover:bg-[var(--c-accent-400)] text-[var(--c-on-accent)] disabled:opacity-50"
             >
               {busy && busyMsg.startsWith("Gerando") ? "Gerando…" : "Gerar laudo"}
             </button>
             <button
               onClick={() => copiarEditor(laudoEditorRef)}
               disabled={busy}
-              className="px-3 py-2 rounded-md text-sm bg-slate-700 hover:bg-slate-600 disabled:opacity-50"
+              className="px-3 py-2 rounded-md text-sm bg-[var(--c-slate-700)] hover:bg-[var(--c-slate-600)] disabled:opacity-50"
             >
               Copiar
             </button>
@@ -1434,7 +1454,7 @@ export default function LaudoVozIA() {
             aoDiminuir={() => setLaudoFontSize((f) => Math.max(f - 2, 10))}
           />
           {busy && (
-            <div className="px-3 py-1 text-sky-400 text-sm border-b border-slate-700">{busyMsg}</div>
+            <div className="px-3 py-1 text-[var(--c-accent-400)] text-sm border-b border-[var(--c-slate-700)]">{busyMsg}</div>
           )}
           <div
             ref={laudoEditorRef}
@@ -1442,17 +1462,17 @@ export default function LaudoVozIA() {
             suppressContentEditableWarning
             data-placeholder="O laudo gerado pela IA aparece aqui, em texto puro, no padrão TÍTULO → ANÁLISE: → IMPRESSÃO:. Revise sempre antes de assinar."
             style={{ fontSize: laudoFontSize + "px" }}
-            className="flex-1 min-h-48 bg-white text-slate-900 p-4 leading-relaxed outline-none whitespace-pre-wrap overflow-auto empty:before:content-[attr(data-placeholder)] empty:before:text-slate-400"
+            className="flex-1 min-h-48 bg-white text-slate-900 p-4 leading-relaxed outline-none whitespace-pre-wrap overflow-auto empty:before:content-[attr(data-placeholder)] empty:before:text-[var(--c-slate-400)]"
           />
         </section>
       </div>
 
-      <footer className="px-4 py-2 text-center text-[11px] text-slate-500 border-t border-slate-700 bg-slate-800">
+      <footer className="px-4 py-2 text-center text-[11px] text-[var(--c-slate-500)] border-t border-[var(--c-slate-700)] bg-[var(--c-slate-800)]">
         LaudoVoz IA v0.2 · O laudo gerado é um rascunho: revisão e responsabilidade final são do médico. Ditado pelo navegador requer Chrome/Edge com internet.
       </footer>
 
       {toast && (
-        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 bg-slate-950 border border-slate-600 text-slate-100 text-sm px-4 py-2 rounded-lg shadow-lg">
+        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 bg-[var(--c-slate-950)] border border-[var(--c-slate-600)] text-[var(--c-slate-100)] text-sm px-4 py-2 rounded-lg shadow-lg">
           {toast}
         </div>
       )}

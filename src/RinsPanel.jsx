@@ -8,17 +8,17 @@ import { POLOS_RIM, RIM_VAZIO } from "./rins.js";
 // ver aplicarRins em src/rins.js). Só entrega {direito, esquerdo} para o
 // chamador via `aoMudar`.
 
-const rotuloSelect = "text-xs font-semibold text-slate-400 mb-1";
-const selectCls = "w-full bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-1.5 outline-none";
-const inputCls = "w-full bg-slate-700 text-slate-100 text-sm rounded-md px-2 py-1.5 outline-none placeholder-slate-500";
+const rotuloSelect = "text-xs font-semibold text-[var(--c-slate-400)] mb-1";
+const selectCls = "w-full bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-1.5 outline-none";
+const inputCls = "w-full bg-[var(--c-slate-700)] text-[var(--c-slate-100)] text-sm rounded-md px-2 py-1.5 outline-none placeholder-[var(--c-slate-500)]";
 
 function PainelLado({ titulo, r, setCampo, testId }) {
   return (
-    <div className="border border-slate-700 rounded-md p-3 space-y-2" data-testid={testId}>
+    <div className="border border-[var(--c-slate-700)] rounded-md p-3 space-y-2" data-testid={testId}>
       <div className="text-sm font-semibold">{titulo}</div>
       <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input type="checkbox" checked={r.calculo} onChange={(e) => setCampo("calculo", e.target.checked)} className="w-4 h-4 accent-sky-500" />
-        <span className="text-slate-300">Cálculo renal</span>
+        <input type="checkbox" checked={r.calculo} onChange={(e) => setCampo("calculo", e.target.checked)} className="w-4 h-4 accent-[var(--c-accent-500)]" />
+        <span className="text-[var(--c-slate-300)]">Cálculo renal</span>
       </label>
       {r.calculo && (
         <div className="grid grid-cols-2 gap-2">
@@ -49,9 +49,9 @@ export default function RinsPanel({ aoMudar }) {
   }, [direito, esquerdo, aoMudar]);
 
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 space-y-3">
-      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Rins (direito e esquerdo)</div>
-      <div className="text-[11px] text-slate-500">
+    <div className="bg-[var(--c-slate-800)] rounded-lg border border-[var(--c-slate-700)] p-3 space-y-3">
+      <div className="text-xs font-semibold text-[var(--c-slate-400)] uppercase tracking-wide">Rins (direito e esquerdo)</div>
+      <div className="text-[11px] text-[var(--c-slate-500)]">
         Só se aplica se nenhuma alteração do grupo "Rins" abaixo estiver marcada.
       </div>
       <PainelLado titulo="Rim direito" r={direito} setCampo={(k, v) => setDireito((p) => ({ ...p, [k]: v }))} testId="rim-direito" />

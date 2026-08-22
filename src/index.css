@@ -1,1 +1,114 @@
 @import "tailwindcss";
+
+/* Tema claro/escuro — troca via atributo data-theme na <html>, persistido
+   pelo próprio LaudoVozIA.jsx (localStorage). Cada variável corresponde a
+   um tom que já existia como classe Tailwind fixa (ex.: bg-slate-800);
+   o escuro reproduz os valores originais (nenhuma mudança visual além do
+   destaque, que trocou de azul pra laranja — mais visível numa sala
+   escurecida, onde azul perde luminância percebida). O claro inverte a
+   função de cada tom (o que era fundo escuro vira fundo claro; o que era
+   texto claro vira texto escuro), preservando o mesmo desenho de tela. */
+:root,
+:root[data-theme="dark"] {
+  --c-slate-100: #f1f5f9;
+  --c-slate-200: #e2e8f0;
+  --c-slate-300: #cbd5e1;
+  --c-slate-400: #94a3b8;
+  --c-slate-500: #64748b;
+  --c-slate-600: #475569;
+  --c-slate-700: #334155;
+  --c-slate-800: #1e293b;
+  --c-slate-900: #0f172a;
+  --c-slate-950: #020617;
+  --c-slate-900-40: rgba(15, 23, 42, 0.4);
+  --c-slate-900-60: rgba(15, 23, 42, 0.6);
+  --c-slate-800-60: rgba(30, 41, 59, 0.6);
+  --c-slate-800-95: rgba(30, 41, 59, 0.95);
+
+  /* Destaque: laranja (era azul/sky) — mais luminoso, some menos numa
+     tela escurecida. */
+  --c-accent-200: #fed7aa;
+  --c-accent-300: #fdba74;
+  --c-accent-400: #fb923c;
+  --c-accent-500: #f97316;
+  --c-accent-600: #ea580c;
+  --c-accent-700: #c2410c;
+  --c-accent-800: #9a3412;
+  --c-accent-900: #7c2d12;
+  --c-accent-950: #431407;
+  --c-accent-900-60: rgba(124, 45, 18, 0.6);
+  --c-on-accent: #1e293b;
+
+  --c-red-100: #fee2e2;
+  --c-red-300: #fca5a5;
+  --c-red-400: #f87171;
+  --c-red-500: #ef4444;
+  --c-red-600: #dc2626;
+  --c-red-700: #b91c1c;
+  --c-red-900: #7f1d1d;
+  --c-red-900-60: rgba(69, 10, 10, 0.6);
+  --c-red-950-40: rgba(69, 10, 10, 0.4);
+
+  --c-amber-200: #fde68a;
+  --c-amber-300: #fcd34d;
+  --c-amber-600: #d97706;
+  --c-amber-700: #b45309;
+  --c-amber-900-40: rgba(120, 53, 15, 0.4);
+  --c-amber-900-60: rgba(120, 53, 15, 0.6);
+
+  --c-emerald-400: #34d399;
+}
+
+:root[data-theme="light"] {
+  --c-slate-100: #0f172a;
+  --c-slate-200: #1e293b;
+  --c-slate-300: #334155;
+  --c-slate-400: #475569;
+  --c-slate-500: #64748b;
+  --c-slate-600: #cbd5e1;
+  --c-slate-700: #e2e8f0;
+  --c-slate-800: #ffffff;
+  --c-slate-900: #f8fafc;
+  --c-slate-950: #ffffff;
+  --c-slate-900-40: rgba(226, 232, 240, 0.6);
+  --c-slate-900-60: rgba(226, 232, 240, 0.8);
+  --c-slate-800-60: rgba(255, 255, 255, 0.7);
+  --c-slate-800-95: rgba(255, 255, 255, 0.97);
+
+  --c-accent-200: #7c2d12;
+  --c-accent-300: #9a3412;
+  --c-accent-400: #c2410c;
+  --c-accent-500: #ea580c;
+  --c-accent-600: #f97316;
+  --c-accent-700: #fb923c;
+  --c-accent-800: #fdba74;
+  --c-accent-900: #fed7aa;
+  --c-accent-950: #ffedd5;
+  --c-accent-900-60: rgba(254, 215, 170, 0.7);
+  --c-on-accent: #1e293b;
+
+  --c-red-100: #7f1d1d;
+  --c-red-300: #b91c1c;
+  --c-red-400: #dc2626;
+  --c-red-500: #ef4444;
+  --c-red-600: #dc2626;
+  --c-red-700: #fca5a5;
+  --c-red-900: #fecaca;
+  --c-red-900-60: rgba(254, 226, 226, 0.8);
+  --c-red-950-40: rgba(254, 226, 226, 0.6);
+
+  --c-amber-200: #78350f;
+  --c-amber-300: #92400e;
+  --c-amber-600: #b45309;
+  --c-amber-700: #f59e0b;
+  --c-amber-900-40: rgba(255, 251, 235, 0.8);
+  --c-amber-900-60: rgba(254, 243, 199, 0.9);
+
+  --c-emerald-400: #059669;
+}
+
+/* Página em si: sem isso, o fundo por trás do app fica transparente e usa
+   a cor padrão do navegador em vez do tema. */
+body {
+  background: var(--c-slate-900);
+}
