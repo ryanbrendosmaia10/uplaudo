@@ -5,6 +5,8 @@
 // sempre ser confirmada pelo médico. Não alterar textos ou a heurística sem
 // revisão do médico. A interface fica em src/MamaBuilder.jsx.
 
+import { aplicarMedida, normalizarValorMedida } from "./camposMedida.js";
+
 export const SHAPE = [
   { id: "oval", label: "Oval", suspicious: false, text: "oval" },
   { id: "redonda", label: "Redonda", suspicious: false, text: "redondo" },
@@ -55,16 +57,169 @@ export const LATERALITY = [
 
 const findOpt = (list, id) => list.find((o) => o.id === id) || null;
 
-export const TISSUE_PADRAO = { pattern: "homog_fibro", gtc: "moderado" };
+// ---- Bloco 3: categoria BI-RADS única e manual para o exame ----
+// Uma só CLASSIFICAÇÃO ULTRASSONOGRÁFICA por laudo, sempre escolhida pelo
+// médico (nunca somada, calculada ou tirada do pior achado). "3" é apenas o
+// valor inicial de conveniência quando o primeiro Nódulo padrão é criado.
+export const CATEGORIAS_BIRADS = ["0", "1", "2", "3", "4", "5", "6"];
+
+// ---- Bloco 3a/5a-5c: Mama — "Nódulo padrão" e variantes ----
+// Atalho para o caso banal: um clique gera a frase completa, deixando para
+// o médico só forma (na variante "padrao")/localização/distâncias/medidas.
+// Sem seletor de ecogenicidade — quem precisar de outra usa o caminho
+// detalhado acima. Convive com ele, não o substitui.
+//
+// Correção do item 5 (2ª rodada de pedidos): a sequência da frase mudou —
+// distâncias vêm ANTES das medidas agora (era o contrário no Bloco 3), e o
+// texto fixo passou de "com orientação paralela, margens circunscritas,
+// ecotextura hipoecoica" para "..., margens regulares, com maior eixo
+// paralelo à pele". Isso substitui o texto do Bloco 3a, não convive com ele.
+export const FORMA_PADRAO_MAMA = [
+  { id: "oval", label: "Oval", text: "oval" },
+  { id: "redondo", label: "Redondo", text: "redondo" },
+  { id: "espiculado", label: "Espiculado", text: "espiculado" },
+];
+
+export const NODULO_PADRAO_MAMA_VAZIO = {
+  variante: "padrao", // "padrao" | "ilhota_gordura" | "cisto_espesso"
+  forma: "oval", // só selecionável na variante "padrao"; fixo "oval" nas outras duas
+  hora: "",
+  lado: "",
+  m1: "", m2: "", m3: "",
+  distPapila: "",
+  distPele: "",
+};
+
+function clausulaLocalizacao(n) {
+  const hora = (n.hora || "").trim();
+  if (!(hora && n.lado)) return null;
+  const ladoTxt = n.lado === "esquerda" ? "esquerda" : "direita";
+  return `localizado no raio de ${hora} horas da mama ${ladoTxt}`;
+}
+
+function clausulaDistancias(n) {
+  const y = normalizarValorMedida(n.distPapila);
+  const z = normalizarValorMedida(n.distPele);
+  if (y && z) return `distando ${y} cm da papila e ${z} cm da pele`;
+  if (y) return `distando ${y} cm da papila`;
+  if (z) return `distando ${z} cm da pele`;
+  return null;
+}
+
+function clausulaMedidas(n) {
+  const medidas = [n.m1, n.m2, n.m3].map(normalizarValorMedida).filter(Boolean);
+  return medidas.length ? `medindo ${medidas.join(" x ")} cm` : null;
+}
+
+export function describeNoduloPadraoMama(n) {
+  const formaOpt = FORMA_PADRAO_MAMA.find((o) => o.id === n.forma) || FORMA_PADRAO_MAMA[0];
+  const formaTxt = n.variante === "padrao" ? formaOpt.text : "oval";
+
+  let inicio;
+  if (n.variante === "ilhota_gordura") {
+    inicio = `Nódulo ${formaTxt}, hiperecoico, margens regulares, com maior eixo paralelo à pele`;
+  } else if (n.variante === "cisto_espesso") {
+    inicio = `Nódulo ${formaTxt}, hipoecoico, margens regulares, com maior eixo paralelo à pele e discreto reforço acústico posterior`;
+  } else {
+    inicio = `Nódulo ${formaTxt}, hipoecoico, margens regulares, com maior eixo paralelo à pele`;
+  }
+
+  const clausulas = [inicio, clausulaLocalizacao(n), clausulaDistancias(n), clausulaMedidas(n)].filter(Boolean);
+  let frase = clausulas.join(", ");
+
+  if (n.variante === "ilhota_gordura") frase += ", podendo representar nódulo sólido ou mesmo ilhota de gordura";
+  else if (n.variante === "cisto_espesso") frase += ", podendo representar nódulo sólido ou mesmo cisto de conteúdo espesso";
+
+  return frase + ".";
+}
+
+// Impressão específica das variantes 5b/5c (uma linha própria por nódulo,
+// nunca a genérica "- Nódulo mamário..."). "padrao" continua contribuindo
+// para a linha genérica combinada com os nódulos detalhados.
+export function impressaoNoduloPadraoEspecial(n) {
+  if (n.variante !== "ilhota_gordura" && n.variante !== "cisto_espesso") return null;
+  const ladoTxt = n.lado === "esquerda" ? "esquerda" : "direita";
+  if (n.variante === "ilhota_gordura") {
+    return `Nódulo hiperecoico, oval, na mama ${ladoTxt}, podendo representar nódulo sólido ou mesmo ilhota de gordura.`;
+  }
+  return `Nódulo hipoecoico, oval, na mama ${ladoTxt}, podendo representar nódulo sólido ou mesmo cisto de conteúdo espesso.`;
+}
+
+// ---- Bloco 3b: Mama — Cistos ----
+// Item separado do nódulo, duas opções mutuamente exclusivas. Convive com
+// nódulo(s) padrão/detalhado(s), cada um com sua própria frase e linha de
+// impressão. Sem categoria BI-RADS própria (cisto simples não é classificado).
+//
+// AVISO: o texto exato dos dois modelos (unilateral/bilateral) foi
+// reconstruído a partir de fragmentos preservados do documento original
+// ("esparsos na mama direita.", "esparsos em ambas as mamas.", "o maior
+// localizado no raio de...") porque a citação literal completa se perdeu
+// numa compactação de contexto desta sessão. Preservei as regras de
+// montagem (campo em branco remove o trecho) e as duas frases finais que
+// tenho certeza. O meio da frase (conector entre "esparsos" e "o maior
+// localizado...") é minha melhor reconstrução, NÃO uma cópia literal
+// verificada do documento — o Dr. Ryan precisa conferir contra o original
+// antes de usar em laudo real. Ver relatório de entrega.
+export const CISTOS_VAZIO = {
+  modo: "", // "" | "unilateral" | "bilateral"
+  lado: "", // mama única (modo unilateral)
+  ladoMaior: "", // lado do maior cisto (modo bilateral, opcional)
+  hora: "",
+  medida: "",
+};
+
+export function describeCistos(c) {
+  if (!c.modo) return "";
+  const hora = (c.hora || "").trim();
+  const medida = normalizarValorMedida(c.medida);
+
+  if (c.modo === "unilateral") {
+    const ladoTxt = c.lado === "esquerda" ? "esquerda" : "direita";
+    const clausulas = [`Cistos simples esparsos na mama ${ladoTxt}`];
+    if (hora) clausulas.push(`o maior localizado no raio de ${hora} horas`);
+    if (medida) clausulas.push(`medindo ${medida} cm`);
+    return clausulas.join(", ") + ".";
+  }
+
+  // bilateral
+  const clausulas = ["Cistos simples esparsos em ambas as mamas"];
+  if (c.ladoMaior && hora) {
+    const ladoTxt = c.ladoMaior === "esquerda" ? "esquerda" : "direita";
+    clausulas.push(`o maior localizado na mama ${ladoTxt}, no raio de ${hora} horas`);
+  } else if (hora) {
+    clausulas.push(`o maior localizado no raio de ${hora} horas`);
+  }
+  if (medida) clausulas.push(`medindo ${medida} cm`);
+  return clausulas.join(", ") + ".";
+}
+
+// ---- Bloco 6: Composição Tecidual ----
+// Seção obrigatória e dedicada (BI-RADS v2025), com o GTC (glandular tissue
+// component) como qualificador em quartis do tecido fibroglandular. Sem
+// valor pré-selecionado em nenhum dos dois campos — o médico escolhe os
+// dois. Nunca entra percentual no texto do laudo, nunca deriva o GTC de
+// outro campo, nunca relaciona GTC a risco (nem na interface nem no laudo).
+export const TISSUE_VAZIO = { pattern: "", gtc: "" };
+
+// [DECIDIR — a restrição de GTC é certa para o padrão "a" (gordura); quanto
+// ao padrão "c" (heterogênea) não há confirmação do médico, então GTC fica
+// habilitado em "c" como recebido — não decidi isso sozinho.]
+export const gtcDesabilitadoPara = (pattern) => pattern === "homog_gordura";
 
 export function describeTissue(tissue) {
+  if (!tissue.pattern) return "";
   const patternTxt = {
-    homog_gordura: "homogênea, de padrão adiposo",
-    homog_fibro: "homogênea, de padrão fibroglandular",
-    heterogenea: "heterogênea",
+    homog_gordura: "ecotextura de fundo homogênea, predominantemente adiposa",
+    homog_fibro: "ecotextura de fundo homogênea, predominantemente fibroglandular",
+    heterogenea: "ecotextura de fundo heterogênea",
   }[tissue.pattern];
-  const gtcTxt = { minimo: "mínimo", leve: "leve", moderado: "moderado", marcado: "marcado" }[tissue.gtc];
-  return `Mamas com ecotextura de fundo ${patternTxt}, com componente glandular ${gtcTxt}.`;
+
+  let frase = `COMPOSIÇÃO TECIDUAL: ${patternTxt}`;
+  if (!gtcDesabilitadoPara(tissue.pattern) && tissue.gtc) {
+    const gtcTxt = { minimo: "mínimo", leve: "leve", moderado: "moderado", marcado: "marcado" }[tissue.gtc];
+    frase += `, com componente de tecido glandular ${gtcTxt}`;
+  }
+  return frase + ".";
 }
 
 export function scoreFor(n) {
@@ -126,6 +281,28 @@ export function describeNodule(n, comCategoria = true) {
   return desc;
 }
 
+// ---- Bloco 5: validação de coerência do BI-RADS 3 ----
+// [CONFIRMAR — critério recebido assim; nota do médico de que "hipoecoica
+// ou heterogênea" pode vir a virar "hipoecoica ou isoecoica" no futuro; não
+// alterado sem confirmação dele.] Os 4 critérios do "provavelmente
+// benigno": margem circunscrita, forma oval, orientação paralela à pele e
+// ecotextura hipoecoica ou heterogênea, todos precisam ser verdadeiros.
+// Só se aplica ao nódulo detalhado — o nódulo padrão tem esses 4 descritores
+// fixos por construção e portanto é sempre compatível (nunca dispara aviso).
+export function noduloCompativelComBirads3(n) {
+  return (
+    n.margin === "circunscrita" &&
+    n.shape === "oval" &&
+    n.orientation === "paralela" &&
+    (n.echo === "hipoecoica" || n.echo === "heterogenea")
+  );
+}
+
+export const AVISO_BIRADS3_LINHA1 =
+  "Nódulo não atende aos critérios de BI-RADS 3. O nódulo não apresenta todas as características necessárias " +
+  "(margem circunscrita, forma oval, orientação paralela e ecotextura hipoecoica ou heterogênea) para classificação como provavelmente benigno.";
+export const AVISO_BIRADS3_LINHA2 = "Selecione a categoria BI-RADS apropriada.";
+
 export function worstNoduleIdx(nodules) {
   let worst = 0, worstFlags = -1;
   nodules.forEach((n, i) => {
@@ -143,16 +320,53 @@ export const NODULO_VAZIO = {
 
 // Monta o bloco de achados de mama. Sem máscara de laudo normal de mama em
 // mascaras.js, o texto é autônomo: tecido de fundo (opcional), cistos,
-// lista de nódulos e a classificação final. A categoria BI-RADS aparece
-// APENAS na linha de classificação, nunca na impressão.
-export function montarLaudoMama(tissueEnabled, tissue, cystPresent, nodules) {
+// lista de nódulos (detalhados + padrão, na ordem de criação de cada grupo)
+// e a classificação final. A categoria BI-RADS é sempre a escolha manual do
+// médico (parâmetro `categoria`) — nunca somada, calculada ou tirada do
+// pior achado — e aparece só na linha de classificação, nunca na frase do
+// nódulo nem na impressão.
+export function montarLaudoMama(tissue, cistos, nodules, nodulosPadrao, categoria) {
   const partes = [];
-  if (tissueEnabled) partes.push(describeTissue(tissue));
-  if (cystPresent) partes.push("Presença de cisto(s) simples.");
-  if (nodules.length) {
-    partes.push(nodules.map((n, i) => `- N${i + 1}: ${describeNodule(n, false).replace(/^Nódulo /, "")}`).join("\n"));
-    const pior = scoreFor(nodules[worstNoduleIdx(nodules)]);
-    partes.push(`CLASSIFICAÇÃO ULTRASSONOGRÁFICA: ACR BIRADS (US) - ${pior.tr.replace("BI-RADS ", "")}`);
+  const textoTecido = describeTissue(tissue || TISSUE_VAZIO);
+  if (textoTecido) partes.push(textoTecido);
+
+  const textoCistos = describeCistos(cistos || CISTOS_VAZIO);
+  if (textoCistos) partes.push(textoCistos);
+
+  const totalNodulos = nodules.length + nodulosPadrao.length;
+  if (totalNodulos) {
+    const linhas = [];
+    let i = 0;
+    nodules.forEach((n) => {
+      i += 1;
+      linhas.push(`- N${i}: ${describeNodule(n, false).replace(/^Nódulo /, "")}`);
+    });
+    nodulosPadrao.forEach((n) => {
+      i += 1;
+      linhas.push(`- N${i}: ${describeNoduloPadraoMama(n).replace(/^Nódulo /, "")}`);
+    });
+    partes.push(linhas.join("\n"));
   }
+
+  const impressao = [];
+  // Nódulos "padrão" (variante genérica) entram na linha combinada com os
+  // detalhados; ilhota de gordura/cisto de conteúdo espesso têm frase de
+  // impressão própria, uma linha por nódulo (item 5b/5c).
+  const nodulosPadraoGenericos = nodulosPadrao.filter((n) => n.variante === "padrao" || !n.variante);
+  const nodulosPadraoEspeciais = nodulosPadrao.filter((n) => n.variante && n.variante !== "padrao");
+  const totalGenericos = nodules.length + nodulosPadraoGenericos.length;
+  if (totalGenericos) {
+    const plural = totalGenericos > 1;
+    impressao.push(`- Nódulo${plural ? "s" : ""} mamário${plural ? "s" : ""}, conforme pormenorizado no corpo do laudo.`);
+  }
+  for (const n of nodulosPadraoEspeciais) {
+    const linha = impressaoNoduloPadraoEspecial(n);
+    if (linha) impressao.push("- " + linha);
+  }
+  if (textoCistos) impressao.push("- Cistos mamários simples.");
+  if (impressao.length) partes.push("IMPRESSÃO DIAGNÓSTICA:\n" + impressao.join("\n"));
+
+  if (categoria) partes.push(`CLASSIFICAÇÃO ULTRASSONOGRÁFICA: ACR BI-RADS (US) - ${categoria}`);
+
   return partes.join("\n\n");
 }

@@ -3,6 +3,8 @@
 // TI-RADS, Tessler et al. 2017). Não alterar pontos, limiares ou textos
 // sem revisão do médico. A interface fica em src/TireoideBuilder.jsx.
 
+import { aplicarMedida } from "./camposMedida.js";
+
 export const COMPOSITION = [
   { id: "cistico", label: "Cístico ou quase completamente cístico", pts: 0, text: "cístico" },
   { id: "espongiforme", label: "Espongiforme", pts: 0, text: "espongiforme" },
@@ -102,19 +104,31 @@ export function scoreFor(n) {
     return { fna: "Não necessária pelo tamanho atual", follow: "Sem seguimento pelo tamanho atual" };
   }
 
-  if (pts <= 1) { tr = "TR1"; sub = "Benigno"; risk = "<1%"; fna = "Não necessária"; follow = "Sem seguimento"; }
-  else if (pts === 2) { tr = "TR2"; sub = "Não suspeito"; risk = "<1,5%"; fna = "Não necessária"; follow = "Sem seguimento, salvo indicação clínica"; }
-  else if (pts === 3) {
-    tr = "TR3"; sub = "Levemente suspeito"; risk = "2-5%";
+  tr = trDePontos(pts);
+  if (tr === "TR1") { sub = "Benigno"; risk = "<1%"; fna = "Não necessária"; follow = "Sem seguimento"; }
+  else if (tr === "TR2") { sub = "Não suspeito"; risk = "<1,5%"; fna = "Não necessária"; follow = "Sem seguimento, salvo indicação clínica"; }
+  else if (tr === "TR3") {
+    sub = "Levemente suspeito"; risk = "2-5%";
     const r = sizeRec(2.5, 1.5); fna = r.fna; follow = r.follow;
-  } else if (pts >= 4 && pts <= 6) {
-    tr = "TR4"; sub = "Moderadamente suspeito"; risk = "5-20%";
+  } else if (tr === "TR4") {
+    sub = "Moderadamente suspeito"; risk = "5-20%";
     const r = sizeRec(1.5, 1.0); fna = r.fna; follow = r.follow;
   } else {
-    tr = "TR5"; sub = "Altamente suspeito"; risk = ">20%";
+    sub = "Altamente suspeito"; risk = ">20%";
     const r = sizeRec(1.0, 0.5); fna = r.fna; follow = r.follow;
   }
   return { pts, tr, sub, risk, fna, follow };
+}
+
+// Faixas de pontos -> categoria TI-RADS (ACR, Tessler et al. 2017). Extraída
+// à parte para ser reaproveitada pelo seletor de combinação do nódulo padrão
+// (item 6b) sem duplicar os limiares.
+function trDePontos(pts) {
+  if (pts <= 1) return "TR1";
+  if (pts === 2) return "TR2";
+  if (pts === 3) return "TR3";
+  if (pts >= 4 && pts <= 6) return "TR4";
+  return "TR5";
 }
 
 export function describeNodule(n) {
@@ -143,6 +157,121 @@ export function describeNodule(n) {
   desc += ` (ACR TI-RADS ${s.tr})`;
   desc += ".";
   return desc;
+}
+
+// ---- Bloco 2 / Item 6b-6c: "Nódulo padrão" ----
+// Botão de atalho para o caso banal: gera de um clique uma frase completa e
+// gramaticalmente correta, deixando para o médico só o que varia por
+// paciente (combinação de composição+ecogenicidade+focos, localização
+// opcional, medidas). Convive com o caminho detalhado acima (que fica
+// intocado).
+//
+// Item 6b (substitui a decisão original do Bloco 2 de não calcular TI-RADS
+// aqui): em vez de dois campos separados de composição/ecogenicidade, um
+// único seletor de combinação. O TI-RADS é somado a partir dos MESMOS pesos
+// já usados no caminho detalhado (COMPOSITION/ECHOGENICITY/FOCI acima) — não
+// é uma tabela nova e fixa, então adicionar outro foco ecogênico no futuro
+// não exige refazer a lógica de pontuação, só um novo item na lista de
+// combinações abaixo.
+export const COMPOSICAO_PADRAO = [
+  { id: "solido", label: "Sólido", text: "sólido" },
+  { id: "misto", label: "Misto", text: "misto" },
+  { id: "misto_predom_solido", label: "Misto, predominantemente sólido", text: "misto, predominantemente sólido" },
+];
+
+export const ECOGENICIDADE_PADRAO = [
+  { id: "isoecoico", label: "Isoecoico", text: "isoecoico" },
+  { id: "hipoecoico", label: "Hipoecoico", text: "hipoecoico" },
+  { id: "hiperecoico", label: "Hiperecoico", text: "hiperecoico" },
+];
+
+const PTS_COMPOSICAO_PADRAO = {
+  solido: findOpt(COMPOSITION, "solido").pts,
+  misto: findOpt(COMPOSITION, "misto_cistico").pts,
+  misto_predom_solido: findOpt(COMPOSITION, "misto_solido").pts,
+};
+const PTS_ECOGENICIDADE_PADRAO = {
+  isoecoico: findOpt(ECHOGENICITY, "isoecoico").pts,
+  hipoecoico: findOpt(ECHOGENICITY, "hipoecoico").pts,
+  hiperecoico: findOpt(ECHOGENICITY, "hiperecoico").pts,
+};
+
+// As 8 linhas da tabela do pedido, com "ou" desdobrado em opções separadas
+// (mesma pontuação/TI-RADS nos dois lados do "ou" — só muda a palavra no
+// texto do laudo, que precisa ser exata para o que o médico observou).
+export const COMBINACOES_TIRADS_PADRAO = [
+  { id: "misto_iso", label: "Misto, isoecoico", composicao: "misto", ecogenicidade: "isoecoico", foco: "nenhum" },
+  { id: "misto_hiper", label: "Misto, hiperecoico", composicao: "misto", ecogenicidade: "hiperecoico", foco: "nenhum" },
+  { id: "misto_hipo", label: "Misto, hipoecoico", composicao: "misto", ecogenicidade: "hipoecoico", foco: "nenhum" },
+  { id: "mps_iso", label: "Misto predominantemente sólido, isoecoico", composicao: "misto_predom_solido", ecogenicidade: "isoecoico", foco: "nenhum" },
+  { id: "mps_hiper", label: "Misto predominantemente sólido, hiperecoico", composicao: "misto_predom_solido", ecogenicidade: "hiperecoico", foco: "nenhum" },
+  { id: "mps_hipo", label: "Misto predominantemente sólido, hipoecoico", composicao: "misto_predom_solido", ecogenicidade: "hipoecoico", foco: "nenhum" },
+  { id: "solido_iso", label: "Sólido, isoecoico", composicao: "solido", ecogenicidade: "isoecoico", foco: "nenhum" },
+  { id: "solido_hiper", label: "Sólido, hiperecoico", composicao: "solido", ecogenicidade: "hiperecoico", foco: "nenhum" },
+  { id: "solido_hipo", label: "Sólido, hipoecoico", composicao: "solido", ecogenicidade: "hipoecoico", foco: "nenhum" },
+  { id: "solido_hipo_macro", label: "Sólido, hipoecoico + macrocalcificações", composicao: "solido", ecogenicidade: "hipoecoico", foco: "macro" },
+  { id: "solido_hipo_puntiforme", label: "Sólido, hipoecoico + microcalcificações/puntiformes", composicao: "solido", ecogenicidade: "hipoecoico", foco: "puntiforme" },
+];
+
+export function pontosCombinacaoPadrao(combinacaoId) {
+  const combo = findOpt(COMBINACOES_TIRADS_PADRAO, combinacaoId) || COMBINACOES_TIRADS_PADRAO[6]; // solido_iso
+  const focoOpt = findOpt(FOCI, combo.foco) || FOCI[0];
+  return PTS_COMPOSICAO_PADRAO[combo.composicao] + PTS_ECOGENICIDADE_PADRAO[combo.ecogenicidade] + focoOpt.pts;
+}
+
+export function tiradsCombinacaoPadrao(combinacaoId) {
+  return trDePontos(pontosCombinacaoPadrao(combinacaoId));
+}
+
+export const TERCOS_PADRAO = [
+  { id: "", label: "selecionar" },
+  { id: "superior", label: "Superior" },
+  { id: "medio", label: "Médio", text: "médio" },
+  { id: "inferior", label: "Inferior" },
+];
+
+export const LOBOS_PADRAO = [
+  { id: "", label: "selecionar" },
+  { id: "direito", label: "Direito" },
+  { id: "esquerdo", label: "Esquerdo" },
+  { id: "istmo", label: "Istmo" },
+];
+
+export const NODULO_PADRAO_VAZIO = {
+  combinacao: "solido_iso", // Sólido, isoecoico — mesmo padrão de antes (era composicao:"solido"+ecogenicidade:"isoecoico")
+  terco: "",
+  lobo: "",
+  m1: "", m2: "", m3: "",
+};
+
+// Item 6c: o TI-RADS do nódulo padrão aparece logo após a descrição, no
+// corpo do laudo — formato "medindo X cm. TI-RADS: [número]." — diferente
+// do BI-RADS de mama (que só entra na classificação final do exame, porque
+// lá é sempre do pior achado; aqui cada nódulo de tireoide tem o seu).
+export function describeNoduloPadrao(n) {
+  const combo = findOpt(COMBINACOES_TIRADS_PADRAO, n.combinacao) || COMBINACOES_TIRADS_PADRAO[6];
+  const comp = findOpt(COMPOSICAO_PADRAO, combo.composicao) || COMPOSICAO_PADRAO[0];
+  const echo = findOpt(ECOGENICIDADE_PADRAO, combo.ecogenicidade) || ECOGENICIDADE_PADRAO[0];
+  const focoOpt = findOpt(FOCI, combo.foco) || FOCI[0];
+  const focoTxt = combo.foco === "nenhum" ? "sem calcificações no seu interior" : `${focoOpt.text} no seu interior`;
+
+  let frase =
+    `Nódulo ${comp.text}, ${echo.text}, de contornos regulares e margens bem definidas, ` +
+    `com maior eixo paralelo à pele, ${focoTxt}`;
+
+  if (n.lobo === "istmo") {
+    frase += ", situado no istmo";
+  } else if (n.lobo && n.terco) {
+    const tercoOpt = findOpt(TERCOS_PADRAO, n.terco);
+    const tercoTxt = (tercoOpt && tercoOpt.text) || tercoOpt?.label?.toLowerCase() || n.terco;
+    const loboTxt = n.lobo === "direito" ? "direito" : "esquerdo";
+    frase += `, situado no terço ${tercoTxt} do lobo ${loboTxt}`;
+  }
+
+  frase += ", medindo cm.";
+  frase = aplicarMedida(frase, [n.m1, n.m2, n.m3]);
+  const tr = tiradsCombinacaoPadrao(n.combinacao).replace("TR", "");
+  return frase.replace(/\.$/, "") + `. TI-RADS: ${tr}.`;
 }
 
 export const GLAND_PADRAO = {
@@ -182,8 +311,9 @@ const glandFoiAlterada = (gland) =>
 // glândula, lista os nódulos, preenche MEDIDAS TIREOIDEANAS e o volume, e
 // troca a linha de normalidade da impressão. Impressão sem medidas e sem
 // localização (regra inviolável do projeto).
-export function montarLaudoTireoide(mascaraTexto, gland, nodules) {
-  const temNodulos = nodules.length > 0;
+export function montarLaudoTireoide(mascaraTexto, gland, nodules, nodulosPadrao = []) {
+  const totalNodulos = nodules.length + nodulosPadrao.length;
+  const temNodulos = totalNodulos > 0;
   const rd = lobeVolume(gland.rd1, gland.rd2, gland.rd3);
   const le = lobeVolume(gland.le1, gland.le2, gland.le3);
   const total = rd === null && le === null ? null : (rd || 0) + (le || 0);
@@ -195,8 +325,14 @@ export function montarLaudoTireoide(mascaraTexto, gland, nodules) {
       if (temNodulos) {
         frase = frase.replace(/\.$/, ":");
         linhas.push(frase);
-        nodules.forEach((n, i) => {
-          linhas.push(`- N${i + 1}: ${describeNodule(n).replace(/^Nódulo /, "")}`);
+        let i = 0;
+        nodules.forEach((n) => {
+          i += 1;
+          linhas.push(`- N${i}: ${describeNodule(n).replace(/^Nódulo /, "")}`);
+        });
+        nodulosPadrao.forEach((n) => {
+          i += 1;
+          linhas.push(`- N${i}: ${describeNoduloPadrao(n).replace(/^Nódulo /, "")}`);
         });
       } else {
         // Sem nódulos, o sufixo da calculadora (que referencia nódulos) não se aplica.
@@ -222,7 +358,7 @@ export function montarLaudoTireoide(mascaraTexto, gland, nodules) {
       continue;
     }
     if (temNodulos && linha.trim().startsWith("- ") && linha.includes("dentro dos padrões da normalidade")) {
-      const plural = nodules.length > 1;
+      const plural = totalNodulos > 1;
       linhas.push(`- Nódulo${plural ? "s" : ""} tireoideano${plural ? "s" : ""}, conforme pormenorizado no corpo do laudo.`);
       continue;
     }
